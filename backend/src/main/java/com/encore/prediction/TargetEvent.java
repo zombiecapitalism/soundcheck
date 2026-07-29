@@ -65,6 +65,12 @@ public class TargetEvent {
     @Builder
     private TargetEvent(Artist artist, String eventName, LocalDate eventDate, String venueName,
                         ShowType expectedShowType, Short expectedSongCount) {
+        // 수집된 공연(show)은 판정 불가로 UNKNOWN이 될 수 있지만, 예측 대상은 사람이 등록하므로
+        // 어떤 셋으로 예측할지 모르는 채 만들 이유가 없다. 페스티벌/단독 가중치의 입력값이기도 하다.
+        if (expectedShowType == null || expectedShowType == ShowType.UNKNOWN) {
+            throw new IllegalArgumentException(
+                    "예측 대상의 expectedShowType은 SOLO 또는 FESTIVAL이어야 합니다: " + expectedShowType);
+        }
         this.artist = artist;
         this.eventName = eventName;
         this.eventDate = eventDate;

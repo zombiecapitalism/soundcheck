@@ -114,6 +114,59 @@ class PredictionRepositoryTest {
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
+    /** NUMERIC(5,4)는 9.9999까지 담기므로, 확률이 1을 넘으면 DB CHECK가 마지막 방어선이다. */
+    @Test
+    void databaseRejectsProbabilityAboveOne() {
+        TargetEvent event = persistTargetEvent();
+
+        Prediction invalid = Prediction.builder()
+                .targetEvent(event)
+                .songKey("holy wars")
+                .songName("Holy Wars... The Punishment Due")
+                .probability(new BigDecimal("1.5000"))
+                .rank((short) 1)
+                .playedCount((short) 19)
+                .sampleSize((short) 20)
+                .build();
+
+        assertThatThrownBy(() -> predictionRepository.saveAndFlush(invalid))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    /** "최근 20회 중 21회 연주" 같은 근거는 성립하지 않는다. */
+    @Test
+    void databaseRejectsPlayedCountExceedingSampleSize() {
+        TargetEvent event = persistTargetEvent();
+
+        Prediction invalid = Prediction.builder()
+                .targetEvent(event)
+                .songKey("hangar 18")
+                .songName("Hangar 18")
+                .probability(new BigDecimal("0.9000"))
+                .rank((short) 1)
+                .playedCount((short) 21)
+                .sampleSize((short) 20)
+                .build();
+
+        assertThatThrownBy(() -> predictionRepository.saveAndFlush(invalid))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    /** 예측 대상은 사람이 등록하므로 "어떤 셋인지 모름"인 채 만들 수 없다. */
+    @Test
+    void rejectsUnknownExpectedShowType() {
+        Artist artist = persistArtist();
+
+        assertThatThrownBy(() -> TargetEvent.builder()
+                .artist(artist)
+                .eventName("2026 부산국제록페스티벌")
+                .eventDate(BUSAN_DAY_TWO)
+                .expectedShowType(ShowType.UNKNOWN)
+                .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("SOLO 또는 FESTIVAL");
+    }
+
     @Test
     void recordActualSetlistMakesEventVerifiable() {
         TargetEvent event = persistTargetEvent();

@@ -155,6 +155,13 @@ CREATE TABLE prediction (
 );
 
 CREATE INDEX idx_prediction_rank ON prediction (target_event_id, rank);
+
+-- NUMERIC(5,4)는 9.9999까지 허용하므로 범위를 CHECK로 못박는다.
+-- 예측 수치는 화면에 그대로 노출되므로 DB가 마지막 방어선이다.
+ALTER TABLE prediction
+    ADD CONSTRAINT ck_prediction_probability CHECK (probability >= 0 AND probability <= 1),
+    ADD CONSTRAINT ck_prediction_encore_ratio CHECK (encore_ratio IS NULL OR (encore_ratio >= 0 AND encore_ratio <= 1)),
+    ADD CONSTRAINT ck_prediction_played_within_sample CHECK (played_count >= 0 AND played_count <= sample_size);
 ```
 
 ### 2.3 배치 이력
