@@ -12,11 +12,13 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.within;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -211,5 +213,35 @@ class ShowRepositoryTest {
 
         Show reloaded = showRepository.findById("ver3").orElseThrow();
         assertThat(reloaded.getCollectedAt()).isAfter(firstCollectedAt);
+    }
+
+    /** collected_at은 수집 시각이지 수정 시각이 아니다. 후처리(show_type 재판정)로는 움직이면 안 된다. */
+    @Test
+    void collectedAtDoesNotMoveOnReclassification() throws Exception {
+        Show show = showRepository.save(showBuilder("ver4").build());
+        entityManager.flush();
+        Instant collectedAt = show.getCollectedAt();
+
+        Thread.sleep(10);
+        show.classifyAs(ShowType.FESTIVAL);
+        entityManager.flush();
+        entityManager.clear();
+
+        Show reloaded = showRepository.findById("ver4").orElseThrow();
+        assertThat(reloaded.getShowType()).isEqualTo(ShowType.FESTIVAL);
+        // timestamptz는 마이크로초 정밀도라 나노초가 잘린다. 10ms sleep 뒤 재판정했으므로
+        // 시각이 움직였다면 1ms 오차를 한참 벗어난다.
+        assertThat(reloaded.getCollectedAt()).isCloseTo(collectedAt, within(1, ChronoUnit.MILLIS));
+    }
+
+    /** 식별자가 다른 셋리스트로 덮어쓰는 것은 프로그래밍 오류이므로 즉시 거부한다. */
+    @Test
+    void refreshFromRejectsDifferentSetlist() {
+        Show show = showRepository.save(showBuilder("ver5").build());
+        Show other = showBuilder("other-id").build();
+
+        assertThatThrownBy(() -> show.refreshFrom(other))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("other-id");
     }
 }

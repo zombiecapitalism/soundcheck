@@ -17,7 +17,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
@@ -78,10 +77,11 @@ public class Show {
     private String rawJson;
 
     /**
-     * 이 행의 내용을 마지막으로 수집한 시각.
-     * 재적재는 같은 행을 UPDATE하므로 최초 삽입 시각에 머물면 안 된다.
+     * 이 행의 내용을 마지막으로 수집한 시각. "마지막 수정 시각"이 아니다.
+     * 후처리(classifyAs)로는 움직이면 안 되고 재수집(생성·refreshFrom)에서만 갱신돼야 하므로
+     * 타임스탬프 생성 어노테이션 대신 도메인 코드가 직접 관리한다.
+     * (@CreationTimestamp는 프로퍼티를 생성 관할로 취급해 refreshFrom의 수동 대입이 UPDATE에 반영되지 않는다.)
      */
-    @UpdateTimestamp
     @Column(name = "collected_at", nullable = false)
     private Instant collectedAt;
 
@@ -103,6 +103,7 @@ public class Show {
         this.showType = showType != null ? showType : ShowType.UNKNOWN;
         this.sourceUrl = sourceUrl;
         this.rawJson = rawJson;
+        this.collectedAt = Instant.now();
     }
 
     public List<ShowSong> getSongs() {
@@ -133,8 +134,16 @@ public class Show {
      * versionId가 달라졌을 때 원본이 새로 내려준 내용으로 갱신한다.
      * setlist.fm은 위키라 공연장·투어명·도시처럼 수집 당시 값이 나중에 수정될 수 있으므로
      * 일부만 갱신하면 원본과 어긋난 채 남는다. 곡 목록은 replaceSongs로 따로 교체한다.
+     * <p>
+     * showType은 복사하지 않는다 — 판정은 별도 단계(classifyAs)의 몫이다. 다만 공연장·투어명이
+     * 바뀌면 기존 판정이 낡은 값일 수 있으므로, 호출자는 갱신 후 재판정을 함께 태워야 한다.
      */
     public void refreshFrom(Show source) {
+        if (!this.setlistId.equals(source.setlistId)) {
+            throw new IllegalArgumentException(
+                    "다른 셋리스트의 내용으로 갱신할 수 없습니다: this=%s, source=%s"
+                            .formatted(this.setlistId, source.setlistId));
+        }
         this.versionId = source.versionId;
         this.eventDate = source.eventDate;
         this.tourName = source.tourName;
@@ -143,6 +152,7 @@ public class Show {
         this.countryCode = source.countryCode;
         this.sourceUrl = source.sourceUrl;
         this.rawJson = source.rawJson;
+        this.collectedAt = Instant.now();
     }
 
     /** tape(입·퇴장 음원)를 뺀 실연주 곡. 예측 집계는 이 목록만 대상으로 한다. */
