@@ -10,6 +10,7 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 import org.springframework.dao.DataIntegrityViolationException;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -160,10 +161,55 @@ class ShowRepositoryTest {
 
         assertThat(show.hasSameVersion("v1")).isTrue();
         assertThat(show.hasSameVersion("v2")).isFalse();
+    }
 
-        show.refreshFrom("v2", "{\"updated\":true}");
+    /** setlist.fm은 위키라 공연장·투어명도 수정된다. 일부만 갱신하면 원본과 어긋난 채 남는다. */
+    @Test
+    void refreshFromReplacesEveryRevisableField() {
+        Show show = showRepository.save(showBuilder("ver2")
+                .venueName("Old Venue")
+                .tourName("Old Tour")
+                .cityName("Osaka")
+                .countryCode("JP")
+                .build());
         entityManager.flush();
 
-        assertThat(show.hasSameVersion("v2")).isTrue();
+        Show source = showBuilder("ver2")
+                .versionId("v2")
+                .venueName("Corrected Venue")
+                .tourName("Corrected Tour")
+                .cityName("Busan")
+                .countryCode("KR")
+                .sourceUrl("https://www.setlist.fm/setlist/ver2.html")
+                .rawJson("{\"updated\":true}")
+                .build();
+
+        show.refreshFrom(source);
+        entityManager.flush();
+        entityManager.clear();
+
+        Show reloaded = showRepository.findById("ver2").orElseThrow();
+        assertThat(reloaded.hasSameVersion("v2")).isTrue();
+        assertThat(reloaded.getVenueName()).isEqualTo("Corrected Venue");
+        assertThat(reloaded.getTourName()).isEqualTo("Corrected Tour");
+        assertThat(reloaded.getCityName()).isEqualTo("Busan");
+        assertThat(reloaded.getCountryCode()).isEqualTo("KR");
+        assertThat(reloaded.getSourceUrl()).contains("setlist.fm");
+    }
+
+    /** collected_at은 "언제 수집했나"이므로 재적재로 내용이 갱신되면 함께 움직여야 한다. */
+    @Test
+    void collectedAtMovesForwardOnRefresh() throws Exception {
+        Show show = showRepository.save(showBuilder("ver3").build());
+        entityManager.flush();
+        Instant firstCollectedAt = show.getCollectedAt();
+
+        Thread.sleep(10);
+        show.refreshFrom(showBuilder("ver3").versionId("v2").rawJson("{\"updated\":true}").build());
+        entityManager.flush();
+        entityManager.clear();
+
+        Show reloaded = showRepository.findById("ver3").orElseThrow();
+        assertThat(reloaded.getCollectedAt()).isAfter(firstCollectedAt);
     }
 }

@@ -16,8 +16,8 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
@@ -77,8 +77,12 @@ public class Show {
     @Column(name = "raw_json", nullable = false, columnDefinition = "jsonb")
     private String rawJson;
 
-    @CreationTimestamp
-    @Column(name = "collected_at", nullable = false, updatable = false)
+    /**
+     * 이 행의 내용을 마지막으로 수집한 시각.
+     * 재적재는 같은 행을 UPDATE하므로 최초 삽입 시각에 머물면 안 된다.
+     */
+    @UpdateTimestamp
+    @Column(name = "collected_at", nullable = false)
     private Instant collectedAt;
 
     @OneToMany(mappedBy = "show", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -125,9 +129,20 @@ public class Show {
         this.showType = showType;
     }
 
-    public void refreshFrom(String versionId, String rawJson) {
-        this.versionId = versionId;
-        this.rawJson = rawJson;
+    /**
+     * versionId가 달라졌을 때 원본이 새로 내려준 내용으로 갱신한다.
+     * setlist.fm은 위키라 공연장·투어명·도시처럼 수집 당시 값이 나중에 수정될 수 있으므로
+     * 일부만 갱신하면 원본과 어긋난 채 남는다. 곡 목록은 replaceSongs로 따로 교체한다.
+     */
+    public void refreshFrom(Show source) {
+        this.versionId = source.versionId;
+        this.eventDate = source.eventDate;
+        this.tourName = source.tourName;
+        this.venueName = source.venueName;
+        this.cityName = source.cityName;
+        this.countryCode = source.countryCode;
+        this.sourceUrl = source.sourceUrl;
+        this.rawJson = source.rawJson;
     }
 
     /** tape(입·퇴장 음원)를 뺀 실연주 곡. 예측 집계는 이 목록만 대상으로 한다. */
