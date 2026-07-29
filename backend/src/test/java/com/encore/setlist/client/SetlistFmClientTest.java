@@ -8,6 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -43,7 +44,8 @@ class SetlistFmClientTest {
         RestClient.Builder builder = RestClient.builder();
         this.server = MockRestServiceServer.bindTo(builder).build();
         return new SetlistFmClient(builder, new SetlistFmProperties(
-                BASE, "test-key", minInterval, maxRetries, Duration.ofMillis(1)));
+                BASE, "test-key", minInterval, maxRetries, Duration.ofMillis(1)),
+                JsonMapper.builder().build());
     }
 
     private static String fixture(String name) {
@@ -82,12 +84,15 @@ class SetlistFmClientTest {
                 .andExpect(method(GET))
                 .andRespond(withSuccess(fixture("artist-setlists.json"), MediaType.APPLICATION_JSON));
 
-        SetlistsResponse response = client.getArtistSetlists(MBID, 1);
+        SetlistsPage response = client.getArtistSetlists(MBID, 1);
         assertThat(response.total()).isEqualTo(1381);
-        assertThat(response.setlist()).hasSize(3);
+        assertThat(response.items()).hasSize(3);
+
+        // raw_json 보관 규칙: DTO에 매핑 안 된 필드(coords)까지 원문에 남아 있어야 재처리가 가능하다
+        assertThat(response.items().get(0).rawJson()).contains("\"coords\"");
 
         // 1건째: tour + tape·cover 곡 + 이름 붙은 세트("STATICA")가 모두 있는 공연
-        SetlistDto full = response.setlist().get(0);
+        SetlistDto full = response.items().get(0).setlist();
         assertThat(full.versionId()).isEqualTo("g1302e9f5");
         assertThat(EventDates.parse(full.eventDate())).isEqualTo(LocalDate.of(2026, 7, 27));
         assertThat(full.tourName()).isEqualTo("North American Tour 2026");
@@ -102,13 +107,13 @@ class SetlistFmClientTest {
         assertThat(tapeCover.coverArtistName()).isEqualTo("The Smashing Pumpkins");
 
         // 2건째: tour 누락 (실응답 20건 중 3건이 누락 상태였다)
-        SetlistDto noTour = response.setlist().get(1);
+        SetlistDto noTour = response.items().get(1).setlist();
         assertThat(noTour.tourName()).isNull();
         assertThat(noTour.songSets().getFirst().song()).hasSize(13);
         assertThat(noTour.songSets().getFirst().song().getFirst().isTape()).isTrue();
 
         // 3건째: 등록만 되고 곡이 없는 셋리스트 (집계 제외 대상)
-        SetlistDto empty = response.setlist().get(2);
+        SetlistDto empty = response.items().get(2).setlist();
         assertThat(empty.songSets()).isEmpty();
         server.verify();
     }
@@ -124,7 +129,7 @@ class SetlistFmClientTest {
                 .andExpect(method(GET))
                 .andRespond(withSuccess(fixture("artist-setlists-doc-edge-cases.json"), MediaType.APPLICATION_JSON));
 
-        SetlistDto edge = client.getArtistSetlists(MBID, 1).setlist().getFirst();
+        SetlistDto edge = client.getArtistSetlists(MBID, 1).items().getFirst().setlist();
 
         assertThat(edge.venueName()).isEqualTo("Venue Without City");
         assertThat(edge.cityName()).isNull();
