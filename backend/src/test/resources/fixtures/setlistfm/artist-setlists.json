@@ -1,0 +1,91 @@
+{
+  "type": "setlists",
+  "itemsPerPage": 20,
+  "page": 1,
+  "total": 2,
+  "setlist": [
+    {
+      "id": "63de4613",
+      "versionId": "7be1aaa0",
+      "eventDate": "02-08-2025",
+      "lastUpdated": "2025-08-03T10:11:12.000+0000",
+      "artist": {
+        "mbid": "24e1b53c-3085-4581-8472-0b0088d2508c",
+        "name": "Avenged Sevenfold",
+        "sortName": "Avenged Sevenfold",
+        "url": "https://www.setlist.fm/setlists/avenged-sevenfold-13d6b0e5.html"
+      },
+      "venue": {
+        "id": "6bd6ca6e",
+        "name": "Incheon Munhak Stadium",
+        "city": {
+          "id": "1843561",
+          "name": "Incheon",
+          "state": "Incheon",
+          "stateCode": "28",
+          "country": { "code": "KR", "name": "South Korea" }
+        },
+        "url": "https://www.setlist.fm/venue/incheon-munhak-stadium.html"
+      },
+      "tour": { "name": "Life Is But a Dream... Tour" },
+      "sets": {
+        "set": [
+          {
+            "song": [
+              { "name": "Val Kilmer", "tape": true },
+              { "name": "Bat Country" },
+              {
+                "name": "Walk",
+                "cover": {
+                  "mbid": "541f16f5-ad7a-428e-af89-9fa1b16d3c9c",
+                  "name": "Pantera",
+                  "sortName": "Pantera",
+                  "url": "https://www.setlist.fm/setlists/pantera-3bd6a220.html"
+                },
+                "info": "Pantera cover"
+              },
+              {
+                "name": "Afterlife",
+                "with": {
+                  "mbid": "aa11b53c-0000-4581-8472-0b0088d2508c",
+                  "name": "Guest Violinist",
+                  "sortName": "Guest Violinist",
+                  "url": "https://www.setlist.fm/setlists/guest.html"
+                }
+              }
+            ]
+          },
+          {
+            "encore": 1,
+            "song": [ { "name": "Save Me" } ]
+          }
+        ]
+      },
+      "info": "Pentaport Rock Festival 2025",
+      "url": "https://www.setlist.fm/setlist/avenged-sevenfold/2025/incheon-63de4613.html"
+    },
+    {
+      "id": "53a1b2c3",
+      "versionId": "1a2b3c4d",
+      "eventDate": "15-03-2024",
+      "artist": {
+        "mbid": "24e1b53c-3085-4581-8472-0b0088d2508c",
+        "name": "Avenged Sevenfold",
+        "sortName": "Avenged Sevenfold",
+        "url": "https://www.setlist.fm/setlists/avenged-sevenfold-13d6b0e5.html"
+      },
+      "venue": {
+        "id": "9a8b7c6d",
+        "name": "Unknown Hall"
+      },
+      "sets": {
+        "set": [
+          {
+            "song": [ { "name": "Nightmare" } ]
+          }
+        ]
+      },
+      "url": "https://www.setlist.fm/setlist/avenged-sevenfold/2024/unknown-53a1b2c3.html"
+    }
+  ]
+}

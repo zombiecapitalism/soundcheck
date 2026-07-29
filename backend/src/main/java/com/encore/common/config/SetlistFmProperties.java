@@ -1,8 +1,12 @@
 package com.encore.common.config;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PositiveOrZero;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.validation.annotation.Validated;
+
+import java.time.Duration;
 
 /**
  * setlist.fm 연동 설정.
@@ -16,7 +20,16 @@ public record SetlistFmProperties(
 
         @NotBlank String baseUrl,
 
-        @NotBlank String apiKey
+        @NotBlank String apiKey,
+
+        /** 요청 간 최소 간격. 무료 키의 rate limit은 발급 시 안내값을 확인해 조정한다. */
+        @DefaultValue("500ms") Duration minRequestInterval,
+
+        /** 429/5xx에서 첫 시도 실패 후 추가로 재시도할 횟수. */
+        @DefaultValue("3") @PositiveOrZero int maxRetries,
+
+        /** 첫 재시도 대기 시간. 이후 시도마다 2배씩 늘어난다. */
+        @DefaultValue("1s") Duration initialBackoff
 ) {
 
     public SetlistFmProperties {

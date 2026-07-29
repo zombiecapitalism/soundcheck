@@ -6,6 +6,8 @@ import com.encore.TestcontainersConfiguration;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.time.Duration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -35,12 +37,16 @@ class SetlistFmPropertiesTest {
      */
     @Test
     void rejectsUnresolvedPlaceholder() {
-        assertThatThrownBy(() -> new SetlistFmProperties("https://api.setlist.fm/rest", "${SETLIST_FM_API_KEY}"))
+        assertThatThrownBy(() -> newProperties("https://api.setlist.fm/rest", "${SETLIST_FM_API_KEY}"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("placeholder가 치환되지 않았습니다");
 
-        assertThatThrownBy(() -> new SetlistFmProperties("${BASE_URL}", "key"))
+        assertThatThrownBy(() -> newProperties("${BASE_URL}", "key"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("setlist-fm.base-url");
+    }
+
+    private static SetlistFmProperties newProperties(String baseUrl, String apiKey) {
+        return new SetlistFmProperties(baseUrl, apiKey, Duration.ZERO, 0, Duration.ZERO);
     }
 }
