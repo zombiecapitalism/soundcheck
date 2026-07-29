@@ -1,0 +1,328 @@
+/* Encore — 모바일 우선. 공연장에서 폰으로 보는 시나리오라 다크 기본, 큰 탭 타깃. */
+
+:root {
+  --bg: #0e1016;
+  --surface: #171b24;
+  --surface-raised: #1e2330;
+  --border: #262c3a;
+  --text: #e9ecf3;
+  --text-muted: #98a0b3;
+  --accent: #f5b14c;
+  --accent-soft: rgba(245, 177, 76, 0.14);
+  --track: #232937;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI',
+    'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* 레이아웃 — 폰 폭 기준 단일 컬럼, 큰 화면에서는 가운데 정렬 */
+.app {
+  max-width: 640px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 0 16px env(safe-area-inset-bottom);
+}
+
+.app-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 16px 0 12px;
+}
+
+.brand {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+}
+
+.brand-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.app-main {
+  flex: 1;
+  padding-bottom: 32px;
+}
+
+.app-footer {
+  padding: 16px 0 24px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.app-footer a {
+  text-decoration: underline;
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 800;
+  margin: 8px 0 4px;
+}
+
+.back-link {
+  display: inline-block;
+  padding: 8px 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* 메인 — 이벤트 목록 */
+.event-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.event-card {
+  display: block;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.event-card:active {
+  background: var(--surface-raised);
+}
+
+.event-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.artist-name {
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.dday-badge {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.event-card-name {
+  margin-top: 4px;
+  font-size: 14px;
+}
+
+.event-card-meta {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* 예측 상세 */
+.event-header {
+  margin-bottom: 8px;
+}
+
+.event-header-meta {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.artist-stats {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.prediction-list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.prediction-item {
+  display: block;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.prediction-item:active {
+  background: var(--surface-raised);
+}
+
+.prediction-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.prediction-rank {
+  flex-shrink: 0;
+  min-width: 22px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.prediction-song {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.prediction-percent {
+  flex-shrink: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 확률 막대 — 수치는 항상 옆에 있으므로 막대는 보조 시각화 */
+.prob-track {
+  margin: 8px 0 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.prob-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #d98f2b, var(--accent));
+}
+
+.prediction-evidence {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.encore-badge {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 999px;
+  padding: 2px 8px;
+  vertical-align: 1px;
+}
+
+/* 곡 상세 */
+.song-header {
+  margin-bottom: 16px;
+}
+
+.song-summary {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.song-summary strong {
+  color: var(--accent);
+}
+
+.song-story-placeholder {
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  padding: 20px 16px;
+  text-align: center;
+}
+
+.song-story-placeholder h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.song-story-placeholder p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* 상태 화면 */
+.status-view {
+  padding: 48px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.retry-button {
+  margin-top: 12px;
+  min-height: 44px;
+  padding: 0 24px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--bg);
+  background: var(--accent);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  margin: 0 auto 12px;
+  border: 3px solid var(--track);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 1.6s;
+  }
+}

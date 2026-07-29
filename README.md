@@ -6,7 +6,7 @@
 
 - Backend: Java 21, Spring Boot 4.1.0, Gradle(Kotlin DSL), Lombok
 - DB: PostgreSQL 16 + pgvector (Docker), Flyway 마이그레이션
-- Frontend: (예정) React + TypeScript + Vite
+- Frontend: React 19 + TypeScript + Vite, TanStack Query, React Router
 
 ## 로컬 실행
 
@@ -65,6 +65,18 @@ cd backend
 - 필요한 것: **Docker 데몬만** (docker-compose DB나 `.env`는 필요 없다 — 테스트는 더미 키와 컨테이너 DB를 쓴다)
 - 개발용 DB(2번에서 띄운 것)와 완전히 격리되며, CI에서도 Docker만 있으면 그대로 돈다
 
+### 5. 프론트엔드 실행
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+- dev 서버가 `/api`를 `localhost:8080`(백엔드)으로 프록시하므로 CORS 설정이 필요 없다
+- 5173 포트가 사용 중이면 Vite가 다음 포트(5174 등)로 올라간다 — 터미널 출력의 주소를 확인할 것
+- 테스트/빌드: `npm test` (vitest), `npm run build` (tsc + vite)
+
 ## 디렉터리 구조
 
 ```
@@ -76,7 +88,10 @@ cd backend
   /batch          배치 실행 이력 (수집/예측/임베딩 공용)
   /api            REST 어댑터 (컨트롤러, 응답 DTO, Problem Detail 변환)
   /common         공통(설정, 예외, 응답 래퍼)
-/frontend         React SPA (예정)
+/frontend         React SPA
+  /src/api        백엔드 클라이언트 (타입, fetch 래퍼, TanStack Query 훅)
+  /src/pages      화면 (이벤트 목록 / 예측 상세 / 곡 상세)
+  /src/lib        표기용 순수 함수 (vitest 단위 테스트)
 /docs             설계 문서 (PRD, 스키마)
 docker-compose.yml
 ```
