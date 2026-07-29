@@ -13,9 +13,22 @@ import {
 /** 예측 상세 — 곡별 확률 리스트. 각 항목에 F5 근거("최근 20회 중 19회 연주")를 함께 표기한다. */
 export default function PredictionsPage() {
   const eventId = Number(useParams().eventId)
+  // 훅은 항상 같은 순서로 호출돼야 하므로 유효성과 무관하게 먼저 건다(무효면 enabled=false)
   const { data: event } = useEvent(eventId)
   const { data: artist } = useArtist(event?.artist.mbid)
   const { data: predictions, isPending, isError, error, refetch } = usePredictions(eventId)
+
+  // id가 숫자가 아니면 쿼리가 시작되지 않아 isPending이 영원히 true다 — 로딩으로 위장되면 안 된다
+  if (!Number.isFinite(eventId)) {
+    return (
+      <>
+        <Link to="/" className="back-link">
+          ← 공연 목록
+        </Link>
+        <StatusView kind="empty" message="주소가 잘못됐어요. 공연 목록에서 다시 선택해 주세요." />
+      </>
+    )
+  }
 
   return (
     <>

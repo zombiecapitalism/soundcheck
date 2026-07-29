@@ -7,9 +7,22 @@ import { evidenceText, formatPercent, isEncoreStaple, positionText } from '../li
 export default function SongPage() {
   const params = useParams()
   const eventId = Number(params.eventId)
-  const songKey = decodeURIComponent(params.songKey ?? '')
+  // react-router가 params를 이미 디코드해서 준다 — 여기서 또 디코드하면 이중 디코드다
+  const songKey = params.songKey ?? ''
   // 예측 목록 캐시에서 곡을 고른다 — 상세 화면 전용 API가 아직 없다
   const { data: predictions, isPending, isError, error, refetch } = usePredictions(eventId)
+
+  // id가 숫자가 아니면 쿼리가 시작되지 않아 isPending이 영원히 true다
+  if (!Number.isFinite(eventId)) {
+    return (
+      <>
+        <Link to="/" className="back-link">
+          ← 공연 목록
+        </Link>
+        <StatusView kind="empty" message="주소가 잘못됐어요. 공연 목록에서 다시 선택해 주세요." />
+      </>
+    )
+  }
 
   if (isPending) {
     return <StatusView kind="loading" message="곡 정보를 불러오는 중…" />
