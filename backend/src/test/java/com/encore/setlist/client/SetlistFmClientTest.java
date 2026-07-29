@@ -171,6 +171,20 @@ class SetlistFmClientTest {
         server.verify();
     }
 
+    /** setlist.fm은 검색 결과 0건에 404를 준다(2026-07-30 실측). 오타 검색이 예외로 터지면 안 된다. */
+    @Test
+    void translatesSearchNotFoundIntoEmptyResult() {
+        SetlistFmClient client = newClient(Duration.ZERO, 3);
+        server.expect(requestTo(BASE + "/1.0/search/artists?artistName=zzz-no-such-band"))
+                .andRespond(withStatus(HttpStatus.NOT_FOUND));
+
+        ArtistSearchResponse response = client.searchArtists("zzz-no-such-band");
+
+        assertThat(response.total()).isZero();
+        assertThat(response.artist()).isEmpty();
+        server.verify(); // maxRetries=3이어도 404는 재시도 없이 1회로 끝나야 한다
+    }
+
     /** 404 같은 일반 4xx는 재시도해도 결과가 같다 — 요청이 1회만 나가야 한다. */
     @Test
     void doesNotRetryOnNonRetryableClientError() {

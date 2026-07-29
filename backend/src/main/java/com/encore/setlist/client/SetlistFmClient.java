@@ -44,12 +44,21 @@ public class SetlistFmClient {
                 .build();
     }
 
-    /** 아티스트 검색 — MBID 확보용. */
+    /** 아티스트 검색 — MBID 확보용. 결과가 없으면 예외가 아니라 빈 응답을 돌려준다. */
     public ArtistSearchResponse searchArtists(String artistName) {
-        return executeWithRetry(() -> restClient.get()
-                .uri("/1.0/search/artists?artistName={name}", artistName)
-                .retrieve()
-                .body(ArtistSearchResponse.class));
+        try {
+            return executeWithRetry(() -> restClient.get()
+                    .uri("/1.0/search/artists?artistName={name}", artistName)
+                    .retrieve()
+                    .body(ArtistSearchResponse.class));
+        } catch (RestClientResponseException e) {
+            // setlist.fm은 검색 결과 0건에 404를 준다(2026-07-30 실측).
+            // 오타 검색이 예외로 터지면 안 되므로 "없음"으로 번역한다.
+            if (e.getStatusCode().value() == 404) {
+                return new ArtistSearchResponse(0, null, null, List.of());
+            }
+            throw e;
+        }
     }
 
     /**
