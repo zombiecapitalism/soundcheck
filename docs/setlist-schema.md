@@ -112,7 +112,13 @@ CREATE TABLE show_song (
 );
 
 CREATE INDEX idx_show_song_key ON show_song (song_key);
-CREATE UNIQUE INDEX uq_show_song ON show_song (setlist_id, position_total);
+
+-- 재적재는 곡 목록을 통째로 교체하므로 같은 (setlist_id, position_total)을 다시 채운다.
+-- Hibernate가 한 flush에서 자식 INSERT를 orphan DELETE보다 먼저 실행하기 때문에
+-- 문장 단위 검사로는 아직 지워지지 않은 기존 행과 충돌한다. 검사를 커밋 시점으로 미룬다.
+-- UNIQUE INDEX는 DEFERRABLE로 만들 수 없어 테이블 제약으로 선언한다.
+ALTER TABLE show_song
+    ADD CONSTRAINT uq_show_song UNIQUE (setlist_id, position_total) DEFERRABLE INITIALLY DEFERRED;
 ```
 
 ### 2.2 예측 결과 (배치 사전 계산)
