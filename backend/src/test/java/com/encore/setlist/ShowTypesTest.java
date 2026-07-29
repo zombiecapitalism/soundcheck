@@ -28,6 +28,13 @@ class ShowTypesTest {
                 .isEqualTo(ShowType.FESTIVAL);
     }
 
+    /** SongKeys와 같은 수준의 NFKC — 전각 표기도 키워드에 걸려야 한다. */
+    @Test
+    void detectsFullwidthKeyword() {
+        assertThat(ShowTypes.classify("ＦＥＳＴＩＶＡＬ Ｇｒｏｕｎｄｓ", null, List.of()))
+                .isEqualTo(ShowType.FESTIVAL);
+    }
+
     /** 키워드가 없는 페스티벌 공연장(삼락생태공원 등)은 수동 매핑으로 잡는다. */
     @Test
     void usesManualMappingKeywords() {

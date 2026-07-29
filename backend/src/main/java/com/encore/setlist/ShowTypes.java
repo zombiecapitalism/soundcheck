@@ -1,5 +1,6 @@
 package com.encore.setlist;
 
+import java.text.Normalizer;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
@@ -19,19 +20,22 @@ public final class ShowTypes {
     }
 
     public static ShowType classify(String venueName, String tourName, Collection<String> manualKeywords) {
-        String haystack = ((venueName == null ? "" : venueName) + " " + (tourName == null ? "" : tourName))
-                .toLowerCase(Locale.ROOT);
+        String haystack = fold((venueName == null ? "" : venueName) + " " + (tourName == null ? "" : tourName));
         for (String keyword : BUILT_IN_KEYWORDS) {
             if (haystack.contains(keyword)) {
                 return ShowType.FESTIVAL;
             }
         }
         for (String keyword : manualKeywords) {
-            if (keyword != null && !keyword.isBlank()
-                    && haystack.contains(keyword.toLowerCase(Locale.ROOT))) {
+            if (keyword != null && !keyword.isBlank() && haystack.contains(fold(keyword))) {
                 return ShowType.FESTIVAL;
             }
         }
         return ShowType.UNKNOWN;
+    }
+
+    /** SongKeys와 같은 수준으로 정규화한다 — 전각 표기("ＦＥＳＴＩＶＡＬ")도 키워드에 걸려야 한다. */
+    private static String fold(String text) {
+        return Normalizer.normalize(text, Normalizer.Form.NFKC).toLowerCase(Locale.ROOT);
     }
 }
