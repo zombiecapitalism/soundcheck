@@ -6,7 +6,7 @@ import com.encore.artist.ArtistRepository;
 import com.encore.batch.CollectionLog;
 import com.encore.batch.CollectionLogRepository;
 import com.encore.batch.JobStatus;
-import com.encore.common.config.SetlistFmProperties;
+import com.encore.setlist.client.SetlistFmProperties;
 import com.encore.setlist.client.SetlistFmClient;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;

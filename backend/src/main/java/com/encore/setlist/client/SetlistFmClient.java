@@ -1,6 +1,5 @@
 package com.encore.setlist.client;
 
-import com.encore.common.config.SetlistFmProperties;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;

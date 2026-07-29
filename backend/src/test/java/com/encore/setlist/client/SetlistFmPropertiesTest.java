@@ -1,4 +1,4 @@
-package com.encore.common.config;
+package com.encore.setlist.client;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Import;

@@ -1,6 +1,5 @@
 package com.encore.setlist.client;
 
-import com.encore.common.config.SetlistFmProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpStatus;

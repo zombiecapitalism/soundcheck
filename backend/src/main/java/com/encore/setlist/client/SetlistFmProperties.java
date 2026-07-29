@@ -1,4 +1,4 @@
-package com.encore.common.config;
+package com.encore.setlist.client;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
