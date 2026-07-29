@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -54,13 +55,36 @@ public class SetlistCollector {
         log.info("셋리스트 수집 시작 — 대상 {}팀", targets.size());
         List<CollectionLog> results = new ArrayList<>();
         for (Artist artist : targets) {
-            CollectionLog result = collect(artist);
+            CollectionLog result;
+            try {
+                result = collect(artist);
+            } catch (RuntimeException e) {
+                // collect 내부에서 못 잡은 예외(로그 저장 실패 등)가 나머지 아티스트 수집을
+                // 막으면 안 된다. FAILED로 남기고 다음으로 넘어간다.
+                log.error("{} 수집 중 예상치 못한 오류 — 다음 아티스트로 계속", artist.getName(), e);
+                result = saveFailedQuietly(artist, e);
+                if (result == null) {
+                    continue;
+                }
+            }
             log.info("{} — {} (fetched={}, updated={}, skipped={})", artist.getName(), result.getStatus(),
                     result.getCounts().getFetched(), result.getCounts().getUpdated(),
                     result.getCounts().getSkipped());
             results.add(result);
         }
         return results;
+    }
+
+    /** FAILED 기록 자체가 실패해도(DB 장애 등) 순회는 계속돼야 하므로 여기서는 로그만 남긴다. */
+    private CollectionLog saveFailedQuietly(Artist artist, RuntimeException cause) {
+        try {
+            return collectionLogRepository.save(CollectionLog.failed(
+                    JobType.SETLIST_SYNC, artist.getMbid(), "예상치 못한 오류: " + cause.getMessage(),
+                    Instant.now()));
+        } catch (RuntimeException logFailure) {
+            log.error("{} collection_log 기록도 실패", artist.getName(), logFailure);
+            return null;
+        }
     }
 
     CollectionLog collect(Artist artist) {
@@ -117,7 +141,17 @@ public class SetlistCollector {
     private void fetchRecentInto(Artist artist, List<SetlistsPage.Item> into) {
         int page = 1;
         while (into.size() < recentShowsLimit) {
-            SetlistsPage result = client.getArtistSetlists(artist.getMbid().toString(), page);
+            SetlistsPage result;
+            try {
+                result = client.getArtistSetlists(artist.getMbid().toString(), page);
+            } catch (RestClientResponseException e) {
+                // 마지막 페이지 너머 요청에는 404가 온다 — 정상 종료다.
+                // 단 첫 페이지의 404는 MBID 자체가 잘못됐다는 뜻이므로 소리 내며 실패해야 한다.
+                if (e.getStatusCode().value() == 404 && page > 1) {
+                    break;
+                }
+                throw e;
+            }
             if (result.items().isEmpty()) {
                 return;
             }

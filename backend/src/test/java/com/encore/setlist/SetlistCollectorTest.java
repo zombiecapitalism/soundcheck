@@ -7,6 +7,7 @@ import com.encore.batch.CollectionLog;
 import com.encore.batch.CollectionLogRepository;
 import com.encore.batch.JobStatus;
 import com.encore.common.config.SetlistFmProperties;
+import com.encore.setlist.client.SetlistFmClient;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
@@ -25,7 +27,11 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 /**
@@ -59,15 +65,18 @@ class SetlistCollectorTest {
 
     @BeforeEach
     void setUp() {
-        RestClient.Builder builder = RestClient.builder();
-        server = MockRestServiceServer.bindTo(builder).build();
-        var client = new com.encore.setlist.client.SetlistFmClient(builder,
-                new SetlistFmProperties(BASE, "test-key", Duration.ZERO, 0, Duration.ofMillis(1)),
-                JsonMapper.builder().build());
         collector = new SetlistCollector(artistRepository, festivalMappingRepository,
-                collectionLogRepository, client, new ShowUpserter(showRepository, entityManager), 40);
+                collectionLogRepository, newClient(), new ShowUpserter(showRepository, entityManager), 40);
         artist = artistRepository.saveAndFlush(Artist.builder()
                 .mbid(UUID.randomUUID()).name("Avenged Sevenfold").target(true).build());
+    }
+
+    private SetlistFmClient newClient() {
+        RestClient.Builder builder = RestClient.builder();
+        server = MockRestServiceServer.bindTo(builder).build();
+        return new SetlistFmClient(builder,
+                new SetlistFmProperties(BASE, "test-key", Duration.ZERO, 0, Duration.ofMillis(1)),
+                JsonMapper.builder().build());
     }
 
     private String setlistsUrl(int page) {
@@ -220,11 +229,7 @@ class SetlistCollectorTest {
     @Test
     void stopsPagingAtRecentShowsLimit() {
         SetlistCollector limited = new SetlistCollector(artistRepository, festivalMappingRepository,
-                collectionLogRepository,
-                new com.encore.setlist.client.SetlistFmClient(bindNewServer(),
-                        new SetlistFmProperties(BASE, "test-key", Duration.ZERO, 0, Duration.ofMillis(1)),
-                        JsonMapper.builder().build()),
-                new ShowUpserter(showRepository, entityManager), 3);
+                collectionLogRepository, newClient(), new ShowUpserter(showRepository, entityManager), 3);
 
         expectPage(1, pageOf(1, 5, "p1a", "p1b"));
         expectPage(2, pageOf(2, 5, "p2a", "p2b"));
@@ -235,6 +240,76 @@ class SetlistCollectorTest {
         assertThat(log.getCounts().getFetched()).isEqualTo(3);
         assertThat(showRepository.count()).isEqualTo(3);
         server.verify();
+    }
+
+    /** total이 없을 때 마지막 페이지 너머의 404는 오류가 아니라 정상 종료다. */
+    @Test
+    void treatsNotFoundBeyondLastPageAsEndOfPaging() {
+        expectPage(1, """
+                {"type":"setlists","itemsPerPage":2,"page":1,"setlist":[
+                  {"id":"nt100001","versionId":"v1","eventDate":"01-06-2026",
+                   "venue":{"id":"v","name":"Anywhere"},
+                   "sets":{"set":[{"song":[{"name":"Song"}]}]},"url":"https://x/nt100001"}
+                ]}
+                """);
+        server.expect(requestTo(setlistsUrl(2))).andRespond(withStatus(HttpStatus.NOT_FOUND));
+
+        CollectionLog log = collector.collectAll().getFirst();
+
+        assertThat(log.getStatus()).isEqualTo(JobStatus.SUCCESS);
+        assertThat(log.getCounts().getFetched()).isEqualTo(1);
+        server.verify();
+    }
+
+    /** 첫 페이지의 404는 MBID 자체가 잘못됐다는 뜻 — 조용히 넘기지 않고 FAILED로 남긴다. */
+    @Test
+    void failsLoudlyWhenFirstPageIsNotFound() {
+        server.expect(requestTo(setlistsUrl(1))).andRespond(withStatus(HttpStatus.NOT_FOUND));
+
+        CollectionLog log = collector.collectAll().getFirst();
+
+        assertThat(log.getStatus()).isEqualTo(JobStatus.FAILED);
+        assertThat(log.getErrorMessage()).contains("목록 조회 실패");
+    }
+
+    /**
+     * collect 내부에서 못 잡은 예외(collection_log 저장 실패 등)가 다른 아티스트 수집을
+     * 막으면 안 된다. 첫 아티스트의 로그 저장이 계속 실패해도 두 번째 아티스트는 수집된다.
+     */
+    @Test
+    void continuesToNextArtistWhenUnexpectedErrorOccurs() {
+        Artist second = artistRepository.saveAndFlush(Artist.builder()
+                .mbid(UUID.randomUUID()).name("Megadeth").target(true).build());
+
+        CollectionLogRepository failingLogRepository = mock(CollectionLogRepository.class);
+        when(failingLogRepository.save(any(CollectionLog.class))).thenAnswer(invocation -> {
+            CollectionLog saved = invocation.getArgument(0);
+            if (artist.getMbid().equals(saved.getArtistMbid())) {
+                throw new RuntimeException("collection_log 저장 실패 시뮬레이션");
+            }
+            return collectionLogRepository.save(saved);
+        });
+
+        RestClient.Builder builder = RestClient.builder();
+        server = MockRestServiceServer.bindTo(builder).ignoreExpectOrder(true).build();
+        SetlistFmClient client = new SetlistFmClient(builder,
+                new SetlistFmProperties(BASE, "test-key", Duration.ZERO, 0, Duration.ofMillis(1)),
+                JsonMapper.builder().build());
+        SetlistCollector isolated = new SetlistCollector(artistRepository, festivalMappingRepository,
+                failingLogRepository, client, new ShowUpserter(showRepository, entityManager), 40);
+
+        server.expect(requestTo(setlistsUrl(1))).andRespond(
+                withSuccess(pageOf(1, 1, "iso00001"), MediaType.APPLICATION_JSON));
+        server.expect(requestTo(BASE + "/1.0/artist/" + second.getMbid() + "/setlists?p=1")).andRespond(
+                withSuccess(pageOf(1, 1, "iso00002"), MediaType.APPLICATION_JSON));
+
+        List<CollectionLog> logs = isolated.collectAll();
+
+        // 첫 아티스트 로그는 저장 실패로 빠지지만, 두 번째 아티스트는 정상 수집·기록된다
+        assertThat(logs).hasSize(1);
+        assertThat(logs.getFirst().getArtistMbid()).isEqualTo(second.getMbid());
+        assertThat(showRepository.findById("iso00001")).isPresent();
+        assertThat(showRepository.findById("iso00002")).isPresent();
     }
 
     /** 한 건이 깨져도(잘못된 eventDate) 나머지는 반영되고 PARTIAL로 남는다. */
@@ -262,12 +337,6 @@ class SetlistCollectorTest {
         assertThat(log.getErrorMessage()).contains("bad00001");
         assertThat(showRepository.findById("good0001")).isPresent();
         assertThat(showRepository.findById("bad00001")).isEmpty();
-    }
-
-    private RestClient.Builder bindNewServer() {
-        RestClient.Builder builder = RestClient.builder();
-        server = MockRestServiceServer.bindTo(builder).build();
-        return builder;
     }
 
     private String pageOf(int page, int total, String... ids) {
