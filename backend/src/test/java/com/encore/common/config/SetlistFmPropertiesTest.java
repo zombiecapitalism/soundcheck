@@ -1,6 +1,8 @@
 package com.encore.common.config;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.Import;
+import com.encore.TestcontainersConfiguration;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -8,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
+@Import(TestcontainersConfiguration.class)
 class SetlistFmPropertiesTest {
 
     @Autowired

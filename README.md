@@ -61,6 +61,10 @@ cd backend
 ./gradlew build
 ```
 
+테스트는 Testcontainers가 전용 PostgreSQL 컨테이너를 띄워서 돈다.
+- 필요한 것: **Docker 데몬만** (docker-compose DB나 `.env`는 필요 없다 — 테스트는 더미 키와 컨테이너 DB를 쓴다)
+- 개발용 DB(2번에서 띄운 것)와 완전히 격리되며, CI에서도 Docker만 있으면 그대로 돈다
+
 ## 디렉터리 구조
 
 ```
@@ -69,6 +73,7 @@ cd backend
   /setlist        공연/셋리스트 도메인 (수집 포함)
   /prediction     예측 로직
   /rag            RAG 파이프라인
+  /batch          배치 실행 이력 (수집/예측/임베딩 공용)
   /common         공통(설정, 예외, 응답 래퍼)
 /frontend         React SPA (예정)
 /docs             설계 문서 (PRD, 스키마)
