@@ -44,6 +44,16 @@ setlist
 
 > ⚠️ 위 구조는 공식 문서 기준으로 정리한 것이며, 실제 키 발급 후 응답 1건을 받아 필드 유무(특히 `tour`, `venue.city`, `cover`, `tape`)를 반드시 확인할 것.
 
+**검증 결과 (2026-07-30, Avenged Sevenfold 셋리스트 p.1 = 20건 실측):**
+
+- 페이징(`total`/`itemsPerPage`/`page`)은 숫자, `eventDate`는 `dd-MM-yyyy` — 문서대로
+- `versionId`는 **영문자 포함 문자열**(예: `g7302ce25`) — 숫자 아님, VARCHAR 유지
+- `tour` 20건 중 3건 누락 확인 → nullable 확정
+- `tape`는 boolean(true인 곡에만 존재), `cover`는 artist 객체 — 문서대로
+- `sets.set`이 빈 배열인 셋리스트 2건 → 곡 0건 집계 제외 규칙 유효
+- `city`에 문서에 없는 `coords`/`state`/`stateCode` 존재 → 무시(관용 파싱)
+- **미확인**: `encore`, `song.with`, `city` 없는 `venue` — 이번 표본에 미등장. 문서 기준 가정 유지, 클라이언트 테스트는 synthetic fixture로 커버
+
 ### 1.4 반드시 처리해야 할 함정
 
 | 함정 | 대응 |

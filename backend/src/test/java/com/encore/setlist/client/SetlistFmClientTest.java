@@ -27,7 +27,10 @@ import static org.springframework.http.HttpMethod.GET;
 
 /**
  * 실제 API를 호출하지 않는다(CLAUDE.md) — MockRestServiceServer + fixture JSON.
- * fixture는 문서 스키마 기준이며, 실응답 1건 확보 후 검증 예정.
+ * <p>
+ * search-artists.json / artist-setlists.json은 2026-07-30 실응답에서 발췌한 것이다.
+ * 단, encore·with·city 없는 venue는 실응답 1페이지에 등장하지 않아 여전히 문서 기준
+ * 가정이며, artist-setlists-doc-edge-cases.json(synthetic)으로 따로 검증한다.
  */
 class SetlistFmClientTest {
 
@@ -63,49 +66,78 @@ class SetlistFmClientTest {
 
         ArtistSearchResponse response = client.searchArtists("Avenged Sevenfold");
 
-        assertThat(response.total()).isEqualTo(1);
-        assertThat(response.artist())
-                .extracting(ArtistDto::mbid)
-                .containsExactly(MBID);
+        // 실응답: 동명 협업 프로젝트까지 5건이 내려오고, 본체가 첫 번째다.
+        assertThat(response.total()).isEqualTo(5);
+        assertThat(response.artist()).hasSize(5);
+        assertThat(response.artist().getFirst().mbid()).isEqualTo(MBID);
+        assertThat(response.artist().getFirst().name()).isEqualTo("Avenged Sevenfold");
         server.verify();
     }
 
+    /** 2026-07-30 실응답 발췌 fixture — 실제 필드 형태(g-접두 versionId, coords 등 미매핑 필드 포함) 검증. */
     @Test
-    void parsesSetlistsWithDefensiveNullHandling() {
+    void parsesRealResponseShape() {
         SetlistFmClient client = newClient(Duration.ZERO, 0);
         server.expect(requestTo(BASE + "/1.0/artist/" + MBID + "/setlists?p=1"))
                 .andExpect(method(GET))
                 .andRespond(withSuccess(fixture("artist-setlists.json"), MediaType.APPLICATION_JSON));
 
         SetlistsResponse response = client.getArtistSetlists(MBID, 1);
-        assertThat(response.setlist()).hasSize(2);
+        assertThat(response.total()).isEqualTo(1381);
+        assertThat(response.setlist()).hasSize(3);
 
+        // 1건째: tour + tape·cover 곡 + 이름 붙은 세트("STATICA")가 모두 있는 공연
         SetlistDto full = response.setlist().get(0);
-        assertThat(full.versionId()).isEqualTo("7be1aaa0");
-        assertThat(EventDates.parse(full.eventDate())).isEqualTo(LocalDate.of(2025, 8, 2));
-        assertThat(full.tourName()).isEqualTo("Life Is But a Dream... Tour");
-        assertThat(full.cityName()).isEqualTo("Incheon");
-        assertThat(full.countryCode()).isEqualTo("KR");
+        assertThat(full.versionId()).isEqualTo("g1302e9f5");
+        assertThat(EventDates.parse(full.eventDate())).isEqualTo(LocalDate.of(2026, 7, 27));
+        assertThat(full.tourName()).isEqualTo("North American Tour 2026");
+        assertThat(full.cityName()).isEqualTo("Shakopee");
+        assertThat(full.countryCode()).isEqualTo("US");
         assertThat(full.songSets()).hasSize(2);
-        assertThat(full.songSets().get(1).isEncore()).isTrue();
+        assertThat(full.songSets().get(1).name()).isEqualTo("STATICA");
 
-        List<SetlistDto.Song> songs = full.songSets().get(0).song();
-        assertThat(songs.get(0).isTape()).isTrue();
-        assertThat(songs.get(1).isTape()).isFalse();
-        assertThat(songs.get(2).isCover()).isTrue();
-        assertThat(songs.get(2).coverArtistName()).isEqualTo("Pantera");
-        assertThat(songs.get(3).with().name()).isEqualTo("Guest Violinist");
+        SetlistDto.Song tapeCover = full.songSets().get(0).song().getFirst();
+        assertThat(tapeCover.isTape()).isTrue();
+        assertThat(tapeCover.isCover()).isTrue();
+        assertThat(tapeCover.coverArtistName()).isEqualTo("The Smashing Pumpkins");
 
-        // 문서상 존재가 불확실한 필드들이 빠져도 조용히 null/기본값으로 흡수돼야 한다.
-        SetlistDto sparse = response.setlist().get(1);
-        assertThat(sparse.tourName()).isNull();
-        assertThat(sparse.cityName()).isNull();
-        assertThat(sparse.countryCode()).isNull();
-        assertThat(sparse.songSets()).hasSize(1);
-        SetlistDto.Song plain = sparse.songSets().get(0).song().get(0);
-        assertThat(plain.isTape()).isFalse();
-        assertThat(plain.isCover()).isFalse();
-        assertThat(plain.coverArtistName()).isNull();
+        // 2건째: tour 누락 (실응답 20건 중 3건이 누락 상태였다)
+        SetlistDto noTour = response.setlist().get(1);
+        assertThat(noTour.tourName()).isNull();
+        assertThat(noTour.songSets().getFirst().song()).hasSize(13);
+        assertThat(noTour.songSets().getFirst().song().getFirst().isTape()).isTrue();
+
+        // 3건째: 등록만 되고 곡이 없는 셋리스트 (집계 제외 대상)
+        SetlistDto empty = response.setlist().get(2);
+        assertThat(empty.songSets()).isEmpty();
+        server.verify();
+    }
+
+    /**
+     * encore / with / city 없는 venue는 문서에는 있지만 실응답 1페이지에 등장하지 않았다.
+     * 실물 확인 전까지 synthetic fixture로 매핑과 방어적 널 처리를 고정해둔다.
+     */
+    @Test
+    void parsesDocumentedButUnobservedFieldsDefensively() {
+        SetlistFmClient client = newClient(Duration.ZERO, 0);
+        server.expect(requestTo(BASE + "/1.0/artist/" + MBID + "/setlists?p=1"))
+                .andExpect(method(GET))
+                .andRespond(withSuccess(fixture("artist-setlists-doc-edge-cases.json"), MediaType.APPLICATION_JSON));
+
+        SetlistDto edge = client.getArtistSetlists(MBID, 1).setlist().getFirst();
+
+        assertThat(edge.venueName()).isEqualTo("Venue Without City");
+        assertThat(edge.cityName()).isNull();
+        assertThat(edge.countryCode()).isNull();
+
+        List<SetlistDto.Song> songs = edge.songSets().getFirst().song();
+        assertThat(songs.getFirst().isTape()).isFalse();
+        assertThat(songs.getFirst().isCover()).isFalse();
+        assertThat(songs.get(1).with().name()).isEqualTo("Guest Artist");
+
+        assertThat(edge.songSets().getFirst().isEncore()).isFalse();
+        assertThat(edge.songSets().get(1).isEncore()).isTrue();
+        assertThat(edge.songSets().get(1).encore()).isEqualTo(1);
         server.verify();
     }
 
@@ -118,7 +150,7 @@ class SetlistFmClientTest {
         server.expect(requestTo(url)).andRespond(
                 withSuccess(fixture("search-artists.json"), MediaType.APPLICATION_JSON));
 
-        assertThat(client.searchArtists("Megadeth").total()).isEqualTo(1);
+        assertThat(client.searchArtists("Megadeth").total()).isEqualTo(5);
         server.verify();
     }
 

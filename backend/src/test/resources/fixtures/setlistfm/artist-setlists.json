@@ -2,90 +2,208 @@
   "type": "setlists",
   "itemsPerPage": 20,
   "page": 1,
-  "total": 2,
+  "total": 1381,
   "setlist": [
     {
-      "id": "63de4613",
-      "versionId": "7be1aaa0",
-      "eventDate": "02-08-2025",
-      "lastUpdated": "2025-08-03T10:11:12.000+0000",
+      "id": "7b70eaf8",
+      "versionId": "g1302e9f5",
+      "eventDate": "27-07-2026",
+      "lastUpdated": "2026-07-28T08:20:49.432+0000",
       "artist": {
         "mbid": "24e1b53c-3085-4581-8472-0b0088d2508c",
         "name": "Avenged Sevenfold",
         "sortName": "Avenged Sevenfold",
-        "url": "https://www.setlist.fm/setlists/avenged-sevenfold-13d6b0e5.html"
+        "disambiguation": "American metal band",
+        "url": "https://www.setlist.fm/setlists/avenged-sevenfold-3d6d1a3.html"
       },
       "venue": {
-        "id": "6bd6ca6e",
-        "name": "Incheon Munhak Stadium",
+        "id": "bde5da6",
+        "name": "Mystic Lake Amphitheater",
         "city": {
-          "id": "1843561",
-          "name": "Incheon",
-          "state": "Incheon",
-          "stateCode": "28",
-          "country": { "code": "KR", "name": "South Korea" }
+          "id": "5046997",
+          "name": "Shakopee",
+          "state": "Minnesota",
+          "stateCode": "MN",
+          "coords": {
+            "lat": 44.7980186,
+            "long": -93.5268986
+          },
+          "country": {
+            "code": "US",
+            "name": "United States"
+          }
         },
-        "url": "https://www.setlist.fm/venue/incheon-munhak-stadium.html"
+        "url": "https://www.setlist.fm/venue/mystic-lake-amphitheater-shakopee-mn-usa-bde5da6.html"
       },
-      "tour": { "name": "Life Is But a Dream... Tour" },
+      "tour": {
+        "name": "North American Tour 2026"
+      },
       "sets": {
         "set": [
           {
             "song": [
-              { "name": "Val Kilmer", "tape": true },
-              { "name": "Bat Country" },
               {
-                "name": "Walk",
+                "name": "Bullet With Butterfly Wings",
+                "tape": true,
                 "cover": {
-                  "mbid": "541f16f5-ad7a-428e-af89-9fa1b16d3c9c",
-                  "name": "Pantera",
-                  "sortName": "Pantera",
-                  "url": "https://www.setlist.fm/setlists/pantera-3bd6a220.html"
-                },
-                "info": "Pantera cover"
-              },
-              {
-                "name": "Afterlife",
-                "with": {
-                  "mbid": "aa11b53c-0000-4581-8472-0b0088d2508c",
-                  "name": "Guest Violinist",
-                  "sortName": "Guest Violinist",
-                  "url": "https://www.setlist.fm/setlists/guest.html"
+                  "mbid": "ba0d6274-db14-4ef5-b28d-657ebde1a396",
+                  "name": "The Smashing Pumpkins",
+                  "sortName": "Smashing Pumpkins, The",
+                  "disambiguation": "",
+                  "url": "https://www.setlist.fm/setlists/the-smashing-pumpkins-23d6e0ab.html"
                 }
               }
             ]
           },
           {
-            "encore": 1,
-            "song": [ { "name": "Save Me" } ]
+            "name": "STATICA",
+            "song": [
+              {
+                "name": "LIGHTS"
+              },
+              {
+                "name": "STATICA"
+              },
+              {
+                "name": "REJOICE"
+              },
+              {
+                "name": "ASHES"
+              }
+            ]
           }
         ]
       },
-      "info": "Pentaport Rock Festival 2025",
-      "url": "https://www.setlist.fm/setlist/avenged-sevenfold/2025/incheon-63de4613.html"
+      "info": "Billed as Statica",
+      "url": "https://www.setlist.fm/setlist/avenged-sevenfold/2026/mystic-lake-amphitheater-shakopee-mn-7b70eaf8.html"
     },
     {
-      "id": "53a1b2c3",
-      "versionId": "1a2b3c4d",
-      "eventDate": "15-03-2024",
+      "id": "735b3ed9",
+      "versionId": "g137b6515",
+      "eventDate": "19-09-2025",
+      "lastUpdated": "2025-09-27T23:46:26.409+0000",
       "artist": {
         "mbid": "24e1b53c-3085-4581-8472-0b0088d2508c",
         "name": "Avenged Sevenfold",
         "sortName": "Avenged Sevenfold",
-        "url": "https://www.setlist.fm/setlists/avenged-sevenfold-13d6b0e5.html"
+        "disambiguation": "American metal band",
+        "url": "https://www.setlist.fm/setlists/avenged-sevenfold-3d6d1a3.html"
       },
       "venue": {
-        "id": "9a8b7c6d",
-        "name": "Unknown Hall"
+        "id": "5bd3eb68",
+        "name": "Highland Festival Grounds at the Kentucky Expo Center",
+        "city": {
+          "id": "4299276",
+          "name": "Louisville",
+          "state": "Kentucky",
+          "stateCode": "KY",
+          "coords": {
+            "lat": 38.2542376,
+            "long": -85.759407
+          },
+          "country": {
+            "code": "US",
+            "name": "United States"
+          }
+        },
+        "url": "https://www.setlist.fm/venue/highland-festival-grounds-at-the-kentucky-expo-center-louisville-ky-usa-5bd3eb68.html"
       },
       "sets": {
         "set": [
           {
-            "song": [ { "name": "Nightmare" } ]
+            "song": [
+              {
+                "name": "Nightcall",
+                "tape": true,
+                "cover": {
+                  "mbid": "eb6de5f6-98f8-4b5a-bfdc-f87fa4936baa",
+                  "name": "Kavinsky",
+                  "sortName": "Kavinsky",
+                  "disambiguation": "",
+                  "url": "https://www.setlist.fm/setlists/kavinsky-3bd68808.html"
+                }
+              },
+              {
+                "name": "Game Over"
+              },
+              {
+                "name": "Chapter Four"
+              },
+              {
+                "name": "Afterlife"
+              },
+              {
+                "name": "Hail to the King"
+              },
+              {
+                "name": "Buried Alive"
+              },
+              {
+                "name": "Gunslinger"
+              },
+              {
+                "name": "Nobody"
+              },
+              {
+                "name": "Nightmare"
+              },
+              {
+                "name": "Not Ready to Die"
+              },
+              {
+                "name": "Bat Country"
+              },
+              {
+                "name": "Cosmic"
+              },
+              {
+                "name": "A Little Piece of Heaven"
+              }
+            ]
           }
         ]
       },
-      "url": "https://www.setlist.fm/setlist/avenged-sevenfold/2024/unknown-53a1b2c3.html"
+      "info": "A week later, the band announced that their Latin American tour would be postponed to next year due to M. Shadows being diagnosed with vocal fold hematoma.",
+      "url": "https://www.setlist.fm/setlist/avenged-sevenfold/2025/highland-festival-grounds-at-the-kentucky-expo-center-louisville-ky-735b3ed9.html"
+    },
+    {
+      "id": "534c77a1",
+      "versionId": "g7302ce25",
+      "eventDate": "30-07-2026",
+      "lastUpdated": "2026-07-29T11:09:36.470+0000",
+      "artist": {
+        "mbid": "24e1b53c-3085-4581-8472-0b0088d2508c",
+        "name": "Avenged Sevenfold",
+        "sortName": "Avenged Sevenfold",
+        "disambiguation": "American metal band",
+        "url": "https://www.setlist.fm/setlists/avenged-sevenfold-3d6d1a3.html"
+      },
+      "venue": {
+        "id": "13d1fd85",
+        "name": "Credit Union 1 Amphitheatre",
+        "city": {
+          "id": "4913723",
+          "name": "Tinley Park",
+          "state": "Illinois",
+          "stateCode": "IL",
+          "coords": {
+            "lat": 41.5733669,
+            "long": -87.7844944
+          },
+          "country": {
+            "code": "US",
+            "name": "United States"
+          }
+        },
+        "url": "https://www.setlist.fm/venue/credit-union-1-amphitheatre-tinley-park-il-usa-13d1fd85.html"
+      },
+      "tour": {
+        "name": "North American Tour 2026"
+      },
+      "sets": {
+        "set": []
+      },
+      "url": "https://www.setlist.fm/setlist/avenged-sevenfold/2026/credit-union-1-amphitheatre-tinley-park-il-534c77a1.html"
     }
   ]
 }

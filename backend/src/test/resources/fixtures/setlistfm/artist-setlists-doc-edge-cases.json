@@ -1,0 +1,46 @@
+{
+  "type": "setlists",
+  "itemsPerPage": 20,
+  "page": 1,
+  "total": 1,
+  "setlist": [
+    {
+      "id": "00edge00",
+      "versionId": "g0000edge",
+      "eventDate": "02-10-2026",
+      "artist": {
+        "mbid": "24e1b53c-3085-4581-8472-0b0088d2508c",
+        "name": "Avenged Sevenfold",
+        "sortName": "Avenged Sevenfold",
+        "url": "https://www.setlist.fm/setlists/avenged-sevenfold-3d6d1a3.html"
+      },
+      "venue": {
+        "id": "9a8b7c6d",
+        "name": "Venue Without City"
+      },
+      "sets": {
+        "set": [
+          {
+            "song": [
+              { "name": "Opening Song" },
+              {
+                "name": "Duet Song",
+                "with": {
+                  "mbid": "aa11b53c-0000-4581-8472-0b0088d2508c",
+                  "name": "Guest Artist",
+                  "sortName": "Guest Artist",
+                  "url": "https://www.setlist.fm/setlists/guest.html"
+                }
+              }
+            ]
+          },
+          {
+            "encore": 1,
+            "song": [ { "name": "Encore Song" } ]
+          }
+        ]
+      },
+      "url": "https://www.setlist.fm/setlist/edge-case-00edge00.html"
+    }
+  ]
+}

@@ -2,14 +2,42 @@
   "type": "artists",
   "itemsPerPage": 30,
   "page": 1,
-  "total": 1,
+  "total": 5,
   "artist": [
     {
       "mbid": "24e1b53c-3085-4581-8472-0b0088d2508c",
       "name": "Avenged Sevenfold",
       "sortName": "Avenged Sevenfold",
+      "disambiguation": "American metal band",
+      "url": "https://www.setlist.fm/setlists/avenged-sevenfold-3d6d1a3.html"
+    },
+    {
+      "mbid": "82c867c2-57d6-4812-9ae3-0d852afba5d3",
+      "name": "Avenged Sevenfold feat. Warren Fitzgerald",
+      "sortName": "Avenged Sevenfold feat. Fitzgerald, Warren",
       "disambiguation": "",
-      "url": "https://www.setlist.fm/setlists/avenged-sevenfold-13d6b0e5.html"
+      "url": "https://www.setlist.fm/setlists/avenged-sevenfold-feat-warren-fitzgerald-73cdf689.html"
+    },
+    {
+      "mbid": "e43d6e44-86f1-435e-92f2-143b643d027b",
+      "name": "NOFX feat. Avenged Sevenfold",
+      "sortName": "NOFX feat. Avenged Sevenfold",
+      "disambiguation": "",
+      "url": "https://www.setlist.fm/setlists/nofx-feat-avenged-sevenfold-bf58942.html"
+    },
+    {
+      "mbid": "994776c9-6441-4100-8e94-2e589dec62ad",
+      "name": "Pussy Riot feat. Avenged Sevenfold",
+      "sortName": "Pussy Riot feat. Avenged Sevenfold",
+      "disambiguation": "",
+      "url": "https://www.setlist.fm/setlists/pussy-riot-feat-avenged-sevenfold-6b867616.html"
+    },
+    {
+      "mbid": "d0674271-6bdc-45c3-97e3-7304b7602ad6",
+      "name": "Slash featuring M. Shadows of Avenged Sevenfold",
+      "sortName": "Slash featuring Shadows, M.",
+      "disambiguation": "",
+      "url": "https://www.setlist.fm/setlists/slash-featuring-m-shadows-of-avenged-sevenfold-7be786f0.html"
     }
   ]
 }
