@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** 순수 함수 검증 — Spring/DB 없이 엔티티만 조립해서 계산한다. */
 class PredictionCalculatorTest {
@@ -200,5 +201,15 @@ class PredictionCalculatorTest {
     @Test
     void returnsEmptyForNoShows() {
         assertThat(PredictionCalculator.calculate(List.of(), ShowType.FESTIVAL, NO_WEIGHTING)).isEmpty();
+    }
+
+    /** boost=0이면 totalWeight가 0이 되어 NaN으로 터질 수 있다 — 퇴화 파라미터는 생성 시점에 거부. */
+    @Test
+    void rejectsDegenerateParams() {
+        assertThatThrownBy(() -> new Params(0.0, 1.0)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new Params(1.1, 1.0)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new Params(-0.5, 1.0)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new Params(0.95, 0.0)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new Params(0.95, -1.0)).isInstanceOf(IllegalArgumentException.class);
     }
 }

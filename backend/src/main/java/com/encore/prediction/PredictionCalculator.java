@@ -22,6 +22,19 @@ import java.util.Map;
 public final class PredictionCalculator {
 
     public record Params(double recencyDecay, double matchingShowTypeBoost) {
+        /**
+         * 운영 경로는 PredictionProperties 검증이 막아주지만 순수 함수 단독 사용도 안전해야 한다.
+         * boost=0이면 유형 일치 공연의 가중치가 전부 0이 되어 totalWeight=0 → 0/0=NaN으로 터진다.
+         */
+        public Params {
+            if (recencyDecay <= 0 || recencyDecay > 1) {
+                throw new IllegalArgumentException("recencyDecay는 (0, 1] 범위여야 합니다: " + recencyDecay);
+            }
+            if (matchingShowTypeBoost <= 0) {
+                throw new IllegalArgumentException(
+                        "matchingShowTypeBoost는 양수여야 합니다: " + matchingShowTypeBoost);
+            }
+        }
     }
 
     /** 근거 설명용 등장 기록. eventDate는 직렬화 이슈를 피해 ISO 문자열로 둔다. */
