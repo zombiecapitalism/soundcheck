@@ -165,9 +165,11 @@ CREATE TABLE collection_log (
     artist_mbid     UUID,
     job_type        VARCHAR(30) NOT NULL,            -- SETLIST_SYNC | PREDICT | EMBED
     status          VARCHAR(20) NOT NULL,            -- SUCCESS | PARTIAL | FAILED
-    fetched_count   INT DEFAULT 0,
-    updated_count   INT DEFAULT 0,
-    skipped_count   INT DEFAULT 0,                   -- versionId 동일로 스킵
+    -- NULL을 허용하면 세 컬럼이 모두 NULL인 행에서 JPA 임베디드가 통째로 null이 되어
+    -- 카운트를 읽는 쪽에서 NPE가 난다. 기본값 0을 NOT NULL로 강제한다.
+    fetched_count   INT NOT NULL DEFAULT 0,
+    updated_count   INT NOT NULL DEFAULT 0,
+    skipped_count   INT NOT NULL DEFAULT 0,          -- versionId 동일로 스킵
     error_message   TEXT,
     started_at      TIMESTAMPTZ NOT NULL,
     finished_at     TIMESTAMPTZ

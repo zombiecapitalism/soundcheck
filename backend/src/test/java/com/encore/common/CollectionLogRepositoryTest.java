@@ -1,6 +1,7 @@
 package com.encore.common;
 
 import jakarta.persistence.EntityManager;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -10,6 +11,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -68,5 +70,22 @@ class CollectionLogRepositoryTest {
         assertThat(reloaded.getCounts()).isNotNull();
         assertThat(reloaded.getCounts().getFetched()).isZero();
         assertThat(reloaded.getCounts().getSkipped()).isZero();
+    }
+
+    /**
+     * 엔티티를 거치지 않고 들어온 행이라도 카운트가 NULL이면 안 된다.
+     * 세 컬럼이 모두 NULL이면 임베디드가 통째로 null이 되어 getCounts()에서 NPE가 나기 때문이다.
+     */
+    @Test
+    void databaseRejectsNullCounts() {
+        // 네이티브 쿼리는 Spring의 예외 변환을 거치지 않아 Hibernate 예외가 그대로 올라온다.
+        assertThatThrownBy(() -> {
+            entityManager.createNativeQuery("""
+                    insert into collection_log (job_type, status, fetched_count, updated_count,
+                                                skipped_count, started_at)
+                    values ('SETLIST_SYNC', 'SUCCESS', null, null, null, now())
+                    """).executeUpdate();
+            entityManager.flush();
+        }).isInstanceOf(ConstraintViolationException.class);
     }
 }

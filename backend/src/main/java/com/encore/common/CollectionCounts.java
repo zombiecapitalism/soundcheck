@@ -13,14 +13,14 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CollectionCounts {
 
-    @Column(name = "fetched_count")
+    @Column(name = "fetched_count", nullable = false)
     private int fetched;
 
-    @Column(name = "updated_count")
+    @Column(name = "updated_count", nullable = false)
     private int updated;
 
     /** versionId가 같아 재적재하지 않고 넘어간 건수. */
-    @Column(name = "skipped_count")
+    @Column(name = "skipped_count", nullable = false)
     private int skipped;
 
     @Builder
