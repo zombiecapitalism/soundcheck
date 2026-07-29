@@ -14,13 +14,15 @@ class SetlistFmPropertiesTest {
     private SetlistFmProperties properties;
 
     /**
-     * 키 값은 테스트 리소스의 더미다. 진짜 키가 아니라 "yml → 레코드 바인딩 경로가 동작한다"를
-     * 검증하는 것이므로, 이 테스트는 실제 시크릿 없이 돌아야 한다.
+     * "yml → 레코드 바인딩 경로가 동작하고 값이 치환돼 있다"를 검증한다.
+     * 키 값 자체는 고정하지 않는다 — 환경변수가 있으면 그쪽이 테스트 리소스의 더미보다
+     * 우선하므로, 특정 값을 단언하면 어느 한쪽 환경에서 반드시 깨진다.
+     * 더미(application.properties)는 환경변수가 없는 곳에서도 컨텍스트가 뜨게 하는 안전망이다.
      */
     @Test
     void bindsFromConfiguration() {
         assertThat(properties.baseUrl()).isEqualTo("https://api.setlist.fm/rest");
-        assertThat(properties.apiKey()).isEqualTo("test-dummy-key");
+        assertThat(properties.apiKey()).isNotBlank().doesNotContain("${");
     }
 
     /**
