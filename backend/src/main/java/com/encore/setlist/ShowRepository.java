@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface ShowRepository extends JpaRepository<Show, String> {
@@ -21,4 +22,14 @@ public interface ShowRepository extends JpaRepository<Show, String> {
             order by s.eventDate desc, s.setlistId desc
             """)
     List<Show> findAllByArtistMbidWithSongs(@Param("artistMbid") UUID artistMbid);
+
+    long countByArtist_Mbid(UUID artistMbid);
+
+    long countByArtist_MbidAndShowType(UUID artistMbid, ShowType showType);
+
+    Optional<Show> findFirstByArtist_MbidOrderByEventDateDesc(UUID artistMbid);
+
+    /** 공연당 평균 곡 수. 등록만 된 빈 셋리스트(곡 0건)는 통계를 왜곡하므로 제외한다. */
+    @Query("select avg(s.songCount) from Show s where s.artist.mbid = :artistMbid and s.songCount > 0")
+    Double averageSongCount(@Param("artistMbid") UUID artistMbid);
 }

@@ -1,6 +1,9 @@
 spring:
   application:
     name: backend
+  mvc:
+    problemdetails:
+      enabled: true # 프레임워크가 만드는 에러(404/405 등)도 RFC 7807로 응답
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:encore}
     username: ${DB_USERNAME}
