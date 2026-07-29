@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,6 +23,9 @@ import java.util.List;
 public class PredictionBatch {
 
     private static final Logger log = LoggerFactory.getLogger(PredictionBatch.class);
+
+    /** 내한 공연 기준 서비스 — "당일" 판정은 서버 타임존이 아니라 KST를 따른다(수집 스케줄러와 동일). */
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final TargetEventRepository targetEventRepository;
     private final CollectionLogRepository collectionLogRepository;
@@ -37,7 +41,7 @@ public class PredictionBatch {
 
     /** 아직 열리지 않은(당일 포함) 이벤트 전체를 재계산한다. */
     public List<CollectionLog> predictUpcoming() {
-        List<TargetEvent> events = targetEventRepository.findByEventDateGreaterThanEqual(LocalDate.now());
+        List<TargetEvent> events = targetEventRepository.findByEventDateGreaterThanEqual(LocalDate.now(KST));
         log.info("예측 배치 시작 — 대상 이벤트 {}건", events.size());
         List<CollectionLog> results = new ArrayList<>();
         for (TargetEvent event : events) {
