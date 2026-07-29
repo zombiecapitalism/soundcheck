@@ -27,6 +27,7 @@ import java.util.UUID;
 
 import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -127,7 +128,8 @@ class ApiIntegrationTest {
                 .andExpect(jsonPath("$[0].avgPosition").value(closeTo(2.5, 1e-9)))
                 .andExpect(jsonPath("$[0].encoreRatio").value(closeTo(0.05, 1e-9)))
                 .andExpect(jsonPath("$[1].rank").value(2))
-                .andExpect(jsonPath("$[1].avgPosition").doesNotExist());
+                // 계산 전 값은 키 생략이 아니라 명시적 null로 내려간다(실측) — 프론트 타입도 number|null
+                .andExpect(jsonPath("$[1].avgPosition").value(nullValue()));
     }
 
     /** 이벤트는 있는데 배치가 아직 안 돈 상태 — 404가 아니라 빈 배열이다. */
@@ -174,8 +176,10 @@ class ApiIntegrationTest {
         mockMvc.perform(get("/api/artists/{mbid}", artist.getMbid()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.recentShows.total").value(0))
-                .andExpect(jsonPath("$.recentShows.latestEventDate").doesNotExist())
-                .andExpect(jsonPath("$.recentShows.avgSongCount").doesNotExist());
+                // 통계 없음은 키 생략이 아니라 명시적 null이다(실측) — doesNotExist는 null도 통과시켜
+                // 계약을 잘못 문서화하므로 nullValue로 못박는다
+                .andExpect(jsonPath("$.recentShows.latestEventDate").value(nullValue()))
+                .andExpect(jsonPath("$.recentShows.avgSongCount").value(nullValue()));
     }
 
     @Test
