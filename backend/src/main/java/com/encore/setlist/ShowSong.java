@@ -67,10 +67,10 @@ public class ShowSong {
     @Column(name = "note")
     private String note;
 
+    /** show는 빌더로 받지 않는다 — 부모 연결은 Show.replaceSongs(→ assignTo)가 유일한 경로다. */
     @Builder
-    private ShowSong(Show show, short setIndex, boolean encore, short positionInSet, short positionTotal,
+    private ShowSong(short setIndex, boolean encore, short positionInSet, short positionTotal,
                      String songName, String songKey, boolean cover, String coverArtist, boolean tape, String note) {
-        this.show = show;
         this.setIndex = setIndex;
         this.encore = encore;
         this.positionInSet = positionInSet;

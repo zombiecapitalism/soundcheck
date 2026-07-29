@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.hibernate.exception.ConstraintViolationException;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
@@ -99,19 +99,19 @@ class ShowRepositoryTest {
     /**
      * uq_show_song은 재적재를 위해 커밋 시점으로 검사가 미뤄져 있다(V2 마이그레이션).
      * 제약 자체는 그대로 살아 있으므로, 검사를 즉시로 되돌리면 중복은 여전히 거부된다.
+     * 곡 부착은 replaceSongs가 유일한 경로다(ShowSong 빌더는 show를 받지 않는다).
      */
     @Test
     void rejectsDuplicatePositionTotalWithinSameShow() {
         Show show = showRepository.saveAndFlush(showBuilder("dup1").build());
         entityManager.createNativeQuery("set constraints uq_show_song immediate").executeUpdate();
 
-        showSongRepository.saveAndFlush(
-                songBuilder((short) 1, "Symphony of Destruction", "symphony of destruction").show(show).build());
+        show.replaceSongs(List.of(
+                songBuilder((short) 1, "Symphony of Destruction", "symphony of destruction").build(),
+                songBuilder((short) 1, "Holy Wars", "holy wars").build()));
 
-        ShowSong duplicate = songBuilder((short) 1, "Holy Wars", "holy wars").show(show).build();
-
-        assertThatThrownBy(() -> showSongRepository.saveAndFlush(duplicate))
-                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> entityManager.flush())
+                .isInstanceOf(ConstraintViolationException.class);
     }
 
     /**
