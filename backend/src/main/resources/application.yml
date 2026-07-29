@@ -13,3 +13,9 @@ spring:
 setlist-fm:
   base-url: https://api.setlist.fm/rest
   api-key: ${SETLIST_FM_API_KEY}
+
+encore:
+  prediction:
+    sample-size: 20               # 집계 표본 - 최근 N회 공연
+    recency-decay: 0.95           # 최신 가중치 감쇠(회차당 곱). 1.0이면 감쇠 없음
+    matching-show-type-boost: 1.5 # expected_show_type과 같은 유형인 공연의 가중치 배수
