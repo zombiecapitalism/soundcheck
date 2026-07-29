@@ -44,15 +44,20 @@ setlist
 
 > ⚠️ 위 구조는 공식 문서 기준으로 정리한 것이며, 실제 키 발급 후 응답 1건을 받아 필드 유무(특히 `tour`, `venue.city`, `cover`, `tape`)를 반드시 확인할 것.
 
-**검증 결과 (2026-07-30, Avenged Sevenfold 셋리스트 p.1 = 20건 실측):**
+**검증 결과 (2026-07-30, A7X p1~3 + Megadeth p1~2 = 셋리스트 100건 / 곡 1,499개 실측):**
 
 - 페이징(`total`/`itemsPerPage`/`page`)은 숫자, `eventDate`는 `dd-MM-yyyy` — 문서대로
 - `versionId`는 **영문자 포함 문자열**(예: `g7302ce25`) — 숫자 아님, VARCHAR 유지
-- `tour` 20건 중 3건 누락 확인 → nullable 확정
-- `tape`는 boolean(true인 곡에만 존재), `cover`는 artist 객체 — 문서대로
-- `sets.set`이 빈 배열인 셋리스트 2건 → 곡 0건 집계 제외 규칙 유효
-- `city`에 문서에 없는 `coords`/`state`/`stateCode` 존재 → 무시(관용 파싱)
-- **미확인**: `encore`, `song.with`, `city` 없는 `venue` — 이번 표본에 미등장. 문서 기준 가정 유지, 클라이언트 테스트는 synthetic fixture로 커버
+- `tour` 100건 중 17건 누락 → nullable 확정. `info`는 42/100, 셋 `name`은 2/121
+- `tape`는 boolean(104곡), `cover`는 artist 객체(93곡) — 문서대로
+- **`encore`는 integer(23/121 셋), `song.with`는 artist 객체(1곡, Sullivan King 게스트) — 실물 확인 완료**
+- artist 객체는 어디서든 `mbid`/`name`/`sortName`/`disambiguation`/`url` 다섯 필드가 항상 존재
+- `city`에 문서에 없는 `coords`/`state`/`stateCode`/`id` 존재 → 무시(관용 파싱, raw_json에 보존)
+- **미확인**: `city` 없는 `venue` — 100건에서 미등장. 유일하게 남은 문서 기준 가정(synthetic fixture로 커버)
+
+**검색 주의 (실측):** `search/artists` 결과에서 **본체가 첫 번째라는 보장이 없다** —
+"Megadeth" 검색의 첫 결과는 "Blue Öyster Cult feat. Megadeth"였다.
+MBID 확정은 이름 완전일치 + `disambiguation` 확인으로 해야 한다.
 
 ### 1.4 반드시 처리해야 할 함정
 

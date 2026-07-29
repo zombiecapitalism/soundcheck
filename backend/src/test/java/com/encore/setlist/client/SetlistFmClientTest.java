@@ -67,11 +67,14 @@ class SetlistFmClientTest {
 
         ArtistSearchResponse response = client.searchArtists("Avenged Sevenfold");
 
-        // 실응답: 동명 협업 프로젝트까지 5건이 내려오고, 본체가 첫 번째다.
+        // 실응답: 동명 협업 프로젝트까지 5건. 본체가 첫 번째라는 보장은 없으므로
+        // (Megadeth 실측에서는 "Blue Öyster Cult feat. Megadeth"가 첫 결과였다)
+        // 이름 완전일치 + disambiguation으로 후보를 구분해야 한다.
         assertThat(response.total()).isEqualTo(5);
         assertThat(response.artist()).hasSize(5);
         assertThat(response.artist().getFirst().mbid()).isEqualTo(MBID);
         assertThat(response.artist().getFirst().name()).isEqualTo("Avenged Sevenfold");
+        assertThat(response.artist().getFirst().disambiguation()).isEqualTo("American metal band");
         server.verify();
     }
 
@@ -118,8 +121,40 @@ class SetlistFmClientTest {
     }
 
     /**
-     * encore / with / city 없는 venue는 문서에는 있지만 실응답 1페이지에 등장하지 않았다.
-     * 실물 확인 전까지 synthetic fixture로 매핑과 방어적 널 처리를 고정해둔다.
+     * encore와 with의 실물 검증 — 2026-07-30 실측 발췌(A7X p2의 b5f8542, Megadeth p2의 3b48487c).
+     * 100건 표본에서 encore 23건(integer), with 1건(artist 객체)으로 확인됐다.
+     */
+    @Test
+    void parsesRealEncoreAndWithFields() {
+        SetlistFmClient client = newClient(Duration.ZERO, 0);
+        server.expect(requestTo(BASE + "/1.0/artist/" + MBID + "/setlists?p=1"))
+                .andExpect(method(GET))
+                .andRespond(withSuccess(fixture("artist-setlists-encore-with.json"), MediaType.APPLICATION_JSON));
+
+        SetlistsPage page = client.getArtistSetlists(MBID, 1);
+
+        SetlistDto withSetlist = page.items().get(0).setlist();
+        SetlistDto.Song withSong = withSetlist.songSets().stream()
+                .flatMap(set -> set.song().stream())
+                .filter(song -> song.with() != null)
+                .findFirst().orElseThrow();
+        assertThat(withSong.name()).isEqualTo("Unholy Confessions");
+        assertThat(withSong.with().name()).isEqualTo("Sullivan King");
+        assertThat(withSong.with().mbid()).isEqualTo("f1e0c3fb-1ecb-49fa-bebd-5b0aedb33737");
+
+        SetlistDto encoreSetlist = page.items().get(1).setlist();
+        assertThat(encoreSetlist.songSets()).hasSize(2);
+        assertThat(encoreSetlist.songSets().get(0).isEncore()).isFalse();
+        assertThat(encoreSetlist.songSets().get(1).isEncore()).isTrue();
+        assertThat(encoreSetlist.songSets().get(1).encore()).isEqualTo(1);
+        assertThat(encoreSetlist.songSets().get(1).song().getFirst().name())
+                .isEqualTo("Holy Wars... The Punishment Due");
+        server.verify();
+    }
+
+    /**
+     * city 없는 venue는 문서에는 있지만 실측 100건에서 아직 관측되지 않았다.
+     * 실물 확인 전까지 synthetic fixture로 방어적 널 처리를 고정해둔다.
      */
     @Test
     void parsesDocumentedButUnobservedFieldsDefensively() {
@@ -134,14 +169,9 @@ class SetlistFmClientTest {
         assertThat(edge.cityName()).isNull();
         assertThat(edge.countryCode()).isNull();
 
-        List<SetlistDto.Song> songs = edge.songSets().getFirst().song();
-        assertThat(songs.getFirst().isTape()).isFalse();
-        assertThat(songs.getFirst().isCover()).isFalse();
-        assertThat(songs.get(1).with().name()).isEqualTo("Guest Artist");
-
-        assertThat(edge.songSets().getFirst().isEncore()).isFalse();
-        assertThat(edge.songSets().get(1).isEncore()).isTrue();
-        assertThat(edge.songSets().get(1).encore()).isEqualTo(1);
+        SetlistDto.Song plain = edge.songSets().getFirst().song().getFirst();
+        assertThat(plain.isTape()).isFalse();
+        assertThat(plain.isCover()).isFalse();
         server.verify();
     }
 

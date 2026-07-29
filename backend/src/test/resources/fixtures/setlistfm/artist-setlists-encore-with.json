@@ -1,0 +1,176 @@
+{
+  "type": "setlists",
+  "itemsPerPage": 20,
+  "page": 1,
+  "total": 2,
+  "setlist": [
+    {
+      "id": "b5f8542",
+      "versionId": "g23490493",
+      "eventDate": "11-06-2025",
+      "lastUpdated": "2025-06-12T09:38:50.403+0000",
+      "artist": {
+        "mbid": "24e1b53c-3085-4581-8472-0b0088d2508c",
+        "name": "Avenged Sevenfold",
+        "sortName": "Avenged Sevenfold",
+        "disambiguation": "American metal band",
+        "url": "https://www.setlist.fm/setlists/avenged-sevenfold-3d6d1a3.html"
+      },
+      "venue": {
+        "id": "73d07619",
+        "name": "Park 360",
+        "city": {
+          "id": "3074967",
+          "name": "Hradec Králové",
+          "state": "Královéhradecký Kraj",
+          "stateCode": "82",
+          "coords": {
+            "lat": 50.2092284127622,
+            "long": 15.8327684657118
+          },
+          "country": {
+            "code": "CZ",
+            "name": "Czechia"
+          }
+        },
+        "url": "https://www.setlist.fm/venue/park-360-hradec-kralove-czechia-73d07619.html"
+      },
+      "tour": {
+        "name": "European Tour 2025"
+      },
+      "sets": {
+        "set": [
+          {
+            "song": [
+              {
+                "name": "Game Over"
+              },
+              {
+                "name": "Mattel"
+              },
+              {
+                "name": "Afterlife"
+              },
+              {
+                "name": "Hail to the King"
+              },
+              {
+                "name": "Buried Alive"
+              },
+              {
+                "name": "The Stage"
+              },
+              {
+                "name": "So Far Away",
+                "info": "dedicate to The Rev"
+              },
+              {
+                "name": "Nobody"
+              },
+              {
+                "name": "Nightmare"
+              },
+              {
+                "name": "Bat Country"
+              },
+              {
+                "name": "Unholy Confessions",
+                "with": {
+                  "mbid": "f1e0c3fb-1ecb-49fa-bebd-5b0aedb33737",
+                  "name": "Sullivan King",
+                  "sortName": "Sullivan King",
+                  "disambiguation": "",
+                  "url": "https://www.setlist.fm/setlists/sullivan-king-6bcd921a.html"
+                }
+              },
+              {
+                "name": "Cosmic"
+              },
+              {
+                "name": "A Little Piece of Heaven"
+              }
+            ]
+          }
+        ]
+      },
+      "url": "https://www.setlist.fm/setlist/avenged-sevenfold/2025/park-360-hradec-kralove-czechia-b5f8542.html"
+    },
+    {
+      "id": "3b48487c",
+      "versionId": "g7b171650",
+      "eventDate": "08-03-2026",
+      "lastUpdated": "2026-03-09T22:56:56.419+0000",
+      "artist": {
+        "mbid": "a9044915-8be3-4c7e-b11f-9e2d2ea0a91e",
+        "name": "Megadeth",
+        "sortName": "Megadeth",
+        "disambiguation": "",
+        "url": "https://www.setlist.fm/setlists/megadeth-73d6aa19.html"
+      },
+      "venue": {
+        "id": "7bdfba24",
+        "name": "Noz Entertainment",
+        "city": {
+          "id": "4635031",
+          "name": "La Vergne",
+          "state": "Tennessee",
+          "stateCode": "TN",
+          "coords": {
+            "lat": 36.01562,
+            "long": -86.58194
+          },
+          "country": {
+            "code": "US",
+            "name": "United States"
+          }
+        },
+        "url": "https://www.setlist.fm/venue/noz-entertainment-la-vergne-tn-usa-7bdfba24.html"
+      },
+      "sets": {
+        "set": [
+          {
+            "song": [
+              {
+                "name": "Mechanix"
+              },
+              {
+                "name": "Tipping Point"
+              },
+              {
+                "name": "Angry Again"
+              },
+              {
+                "name": "I Don't Care"
+              },
+              {
+                "name": "Dread and the Fugitive Mind"
+              },
+              {
+                "name": "Hangar 18"
+              },
+              {
+                "name": "Let There Be Shred"
+              },
+              {
+                "name": "Symphony of Destruction"
+              },
+              {
+                "name": "Peace Sells"
+              }
+            ]
+          },
+          {
+            "encore": 1,
+            "song": [
+              {
+                "name": "Holy Wars... The Punishment Due",
+                "info": "Preceded by awards presentation"
+              }
+            ]
+          }
+        ]
+      },
+      "url": "https://www.setlist.fm/setlist/megadeth/2026/noz-entertainment-la-vergne-tn-3b48487c.html"
+    }
+  ]
+}
