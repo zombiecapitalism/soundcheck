@@ -23,6 +23,7 @@ cp .env.example .env
 | `SETLIST_FM_API_KEY` | setlist.fm에서 발급받은 API 키 (https://www.setlist.fm/settings/api) |
 | `DB_HOST` / `DB_PORT` / `DB_NAME` | 기본값(localhost / 5432 / encore) 그대로 사용 가능 |
 | `DB_USERNAME` / `DB_PASSWORD` | 로컬 개발용 계정 — 원하는 값으로 지정 (docker-compose와 backend가 동일한 값을 참조) |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | 관리자 콘솔(`/admin`) Basic 인증 계정 |
 
 `backend`는 `application.yml`에서 이 값들을 환경변수로만 참조하며, 시크릿을 코드/설정 파일에 하드코딩하지 않는다.
 
@@ -76,6 +77,18 @@ npm run dev
 - dev 서버가 `/api`를 `localhost:8080`(백엔드)으로 프록시하므로 CORS 설정이 필요 없다
 - 5173 포트가 사용 중이면 Vite가 다음 포트(5174 등)로 올라간다 — 터미널 출력의 주소를 확인할 것
 - 테스트/빌드: `npm test` (vitest), `npm run build` (tsc + vite)
+
+### 6. 운영 (관리자 콘솔)
+
+`/admin`에서 (`ADMIN_USERNAME`/`ADMIN_PASSWORD`로 로그인):
+
+1. **아티스트 등록** — 밴드명으로 setlist.fm을 검색해 후보 중에서 선택.
+   동명 프로젝트가 많으므로 disambiguation을 확인하고 본체를 고를 것
+   (실측: "Megadeth" 검색의 첫 결과는 본체가 아니었다). 등록하면 수집이 자동 시작된다
+2. **이벤트 등록** — 아티스트·공연일·유형(FESTIVAL/SOLO)을 넣으면 예측까지 즉시 계산
+3. **배치 실행** — 수집(비동기, 중복 실행 방지)·예측 재계산 수동 트리거.
+   페스티벌 직후 즉시 재수집 용도
+4. **배치 이력** — collection_log 최근 30건과 진행 상태
 
 ## 디렉터리 구조
 
