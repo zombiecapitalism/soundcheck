@@ -7,6 +7,4 @@ import java.util.List;
 public interface ShowSongRepository extends JpaRepository<ShowSong, Long> {
 
     List<ShowSong> findByShow_SetlistId(String setlistId);
-
-    List<ShowSong> findBySongKey(String songKey);
 }
