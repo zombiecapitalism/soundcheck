@@ -1,4 +1,4 @@
-package com.encore.setlist;
+package com.encore.batch;
 
 public enum JobType {
     SETLIST_SYNC,

@@ -34,6 +34,7 @@ setlist.fm의 과거 공연 데이터를 수집해 "이번 공연에서 어떤 �
     /setlist      공연/셋리스트 도메인 (수집 포함)
     /prediction   예측 로직
     /rag          RAG 파이프라인
+    /batch        배치 실행 이력 (collection_log — 수집/예측/임베딩 공용)
     /common       공통(설정, 예외, 응답 래퍼)
 /frontend         React SPA
 /docs             설계 문서 (PRD, 스키마)

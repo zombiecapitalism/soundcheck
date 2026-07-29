@@ -1,4 +1,4 @@
-package com.encore.setlist;
+package com.encore.batch;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;

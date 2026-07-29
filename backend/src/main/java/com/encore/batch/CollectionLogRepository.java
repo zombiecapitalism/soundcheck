@@ -1,4 +1,4 @@
-package com.encore.setlist;
+package com.encore.batch;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
