@@ -1,4 +1,4 @@
-package com.encore.common;
+package com.encore.setlist;
 
 import jakarta.persistence.EntityManager;
 import org.hibernate.exception.ConstraintViolationException;

@@ -1,4 +1,4 @@
-package com.encore.common;
+package com.encore.setlist;
 
 public enum JobStatus {
     SUCCESS,
