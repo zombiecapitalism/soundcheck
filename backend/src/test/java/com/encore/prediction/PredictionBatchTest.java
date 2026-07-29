@@ -191,6 +191,34 @@ class PredictionBatchTest {
         assertThat(failed.getArtistMbid()).isEqualTo(noShows.getMbid());
     }
 
+    /**
+     * 빈 셋리스트(등록만 된 미래 공연)는 표본 상한을 잡아먹지 않는다 —
+     * limit 전에 걸러져 표본이 "집계 가능한 최근 N회"로 채워진다.
+     */
+    @Test
+    void songlessShowsDoNotConsumeSampleSlots() {
+        PredictionGenerator sampleOfOne = new PredictionGenerator(targetEventRepository, showRepository,
+                predictionRepository, new PredictionProperties(1, 1.0, 1.0), JsonMapper.builder().build());
+        PredictionBatch limitedBatch = new PredictionBatch(targetEventRepository, collectionLogRepository,
+                sampleOfOne);
+        persistShow("upcoming", LocalDate.of(2026, 9, 30), ShowType.FESTIVAL); // 곡 0건
+        persistShow("played", LocalDate.of(2026, 7, 1), ShowType.UNKNOWN,
+                song("Holy Wars", "holy wars", 1, false, false));
+        entityManager.flush();
+        TargetEvent event = persistEvent(BUSAN);
+
+        List<CollectionLog> logs = limitedBatch.predictUpcoming();
+        entityManager.flush();
+        entityManager.clear();
+
+        // 표본 1회가 빈 공연이 아니라 실제 연주 공연으로 채워졌다
+        assertThat(logs.getFirst().getStatus()).isEqualTo(JobStatus.SUCCESS);
+        assertThat(logs.getFirst().getCounts().getFetched()).isEqualTo(1);
+        List<Prediction> rows = predictionRepository.findByTargetEvent_IdOrderByRankAsc(event.getId());
+        assertThat(rows).extracting(Prediction::getSongKey).containsExactly("holy wars");
+        assertThat(rows.getFirst().getProbability()).isEqualByComparingTo("1.0000");
+    }
+
     /** 표본 상한: 최근 N회만 집계에 들어간다. */
     @Test
     void respectsSampleSizeLimit() {

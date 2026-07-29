@@ -44,8 +44,12 @@ public final class PredictionCalculator {
 
     /** 반환 순서가 곧 순위다: 확률 내림차순 → 연주 횟수 내림차순 → song_key 오름차순(결정적). */
     public static List<SongScore> calculate(List<Show> recentShows, ShowType expectedShowType, Params params) {
-        // 호출자 순서를 믿지 않고 최근순으로 직접 정렬한다 — 감쇠 지수가 순서에 달려 있다
+        // 곡 0건(등록만 된 미래 공연, tape뿐인 공연)은 집계에서 제외한다 — docs/setlist-schema.md 1.4.
+        // 빈 공연은 최근순 맨 앞에 오기 쉬워서, 포함하면 가장 높은 가중치 슬롯이 낭비되고
+        // 모든 곡의 확률이 일괄 희석된다.
+        // 호출자 순서를 믿지 않고 최근순으로 직접 정렬한다 — 감쇠 지수가 순서에 달려 있다.
         List<Show> shows = recentShows.stream()
+                .filter(show -> !show.playedSongs().isEmpty())
                 .sorted(Comparator.comparing(Show::getEventDate).reversed()
                         .thenComparing(Show::getSetlistId, Comparator.reverseOrder()))
                 .toList();

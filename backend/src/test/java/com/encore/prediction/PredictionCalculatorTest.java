@@ -63,6 +63,24 @@ class PredictionCalculatorTest {
         assertThat(holyWars.evidence().baseFrequency()).isCloseTo(2.0 / 3, org.assertj.core.data.Offset.offset(1e-9));
     }
 
+    /**
+     * 곡 0건 공연은 표본에서 빠져야 한다(docs 1.4). setlist.fm은 공연 전에 페이지가 먼저
+     * 생기므로 빈 셋리스트가 최근순 맨 앞에 오는 게 보통이다 — 포함되면 전 곡이 희석된다.
+     */
+    @Test
+    void excludesSonglessShowsFromSample() {
+        List<SongScore> scores = PredictionCalculator.calculate(List.of(
+                show("upcoming", LocalDate.of(2026, 7, 30), ShowType.FESTIVAL), // 등록만 된 미래 공연
+                show("tapeOnly", LocalDate.of(2026, 7, 20), ShowType.UNKNOWN,
+                        song("Intro Tape", "intro tape", 1, false, true)),
+                show("played", LocalDate.of(2026, 7, 1), ShowType.UNKNOWN, song("Holy Wars", "holy wars", 1))
+        ), ShowType.FESTIVAL, NO_WEIGHTING);
+
+        SongScore holyWars = find(scores, "holy wars");
+        assertThat(holyWars.sampleSize()).isEqualTo(1);
+        assertThat(holyWars.probability()).isEqualByComparingTo("1.0000"); // 빈 공연이 희석하지 않는다
+    }
+
     @Test
     void excludesTapeSongsFromAggregation() {
         List<SongScore> scores = PredictionCalculator.calculate(List.of(
