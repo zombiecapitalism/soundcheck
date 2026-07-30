@@ -23,7 +23,7 @@
 
 | 문서 | 내용 |
 |------|------|
-| [/docs/setlist-prd.md](../setlist-prd.md) | 제품 요구사항 (v0.2 — 확장 기능 E1~E11 포함) |
+| [/docs/setlist-prd.md](../setlist-prd.md) | 제품 요구사항 (v0.2 — 확장 기능 E1~E12 포함) |
 | [/docs/setlist-schema.md](../setlist-schema.md) | 데이터 설계 원본 + setlist.fm API 실측 검증 기록 |
 | [/docs/implementation-plan.md](../implementation-plan.md) | 확장 기능 구현 순서 (P1~P3) |
 | [/docs/tuning-log.md](../tuning-log.md) | 예측 파라미터 튜닝 기록 |
