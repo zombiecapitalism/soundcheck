@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ExplanationSource } from '../api/types'
 
 // RAG Chat(E8) — POST + SSE. EventSource는 POST를 못 쓰므로 fetch 스트림을 직접 파싱한다.
@@ -43,6 +43,9 @@ export function useChat(eventId: number) {
   const [state, setState] = useState<ChatState>({ turns: [], status: 'idle', errorMessage: null })
   // 진행 중 요청 취소용 — 언마운트나 새 질문 시 이전 스트림을 닫는다
   const abortRef = useRef<AbortController | null>(null)
+
+  // 페이지를 떠나면 스트림을 실제로 닫는다 — 안 닫으면 서버 LLM 생성(비용)이 끝까지 돈다
+  useEffect(() => () => abortRef.current?.abort(), [])
 
   const send = async (question: string) => {
     const trimmed = question.trim()

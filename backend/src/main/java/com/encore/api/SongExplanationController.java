@@ -2,6 +2,7 @@ package com.encore.api;
 
 import com.encore.artist.Artist;
 import com.encore.artist.ArtistRepository;
+import com.encore.prediction.Prediction;
 import com.encore.prediction.PredictionRepository;
 import com.encore.rag.SongExplanationService;
 import org.springframework.http.MediaType;
@@ -25,8 +26,9 @@ import java.util.UUID;
  * delta를 JSON 문자열로 감싸는 이유: SSE 규격은 "data:" 뒤의 공백 하나를 벗겨내는데,
  * LLM 토큰은 공백으로 시작하는 경우가 많아 그대로 보내면 단어 사이 공백이 사라진다.
  * <p>
- * songKey는 아티스트 안에서만 유일하므로 artistMbid가 필수다. songName(원본 곡명)은
- * 검색 질의와 프롬프트에 쓴다 — 정규화 키는 손실 변환이라 질의로 부적합하다.
+ * songKey는 아티스트 안에서만 유일하므로 artistMbid가 필수다. 검색 질의·프롬프트에 쓰는
+ * 원본 곡명은 클라이언트가 보내지 않고 서버가 예측 스냅샷(prediction.song_name)에서 읽는다 —
+ * 파라미터로 받으면 임의 텍스트가 프롬프트에 들어가 공용 캐시를 오염시킬 수 있다.
  */
 @RestController
 @RequestMapping("/api/songs")
@@ -49,17 +51,17 @@ public class SongExplanationController {
 
     @GetMapping(value = "/{songKey}/explanation", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<String>> explanation(@PathVariable String songKey,
-                                                     @RequestParam UUID artistMbid,
-                                                     @RequestParam String songName) {
+                                                     @RequestParam UUID artistMbid) {
         Artist artist = artistRepository.findById(artistMbid)
                 .orElseThrow(() -> new ApiNotFoundException("등록되지 않은 아티스트입니다: " + artistMbid));
-        // 예측에 있는 곡만 — 공개 엔드포인트라 임의 songKey로 임베딩·LLM 비용이 새면 안 된다
-        if (!predictionRepository.existsByTargetEvent_Artist_MbidAndSongKey(artistMbid, songKey)) {
-            throw new ApiNotFoundException("예측에 없는 곡입니다: " + songKey);
-        }
+        // 예측에 있는 곡만 — 공개 엔드포인트라 임의 songKey로 임베딩·LLM 비용이 새면 안 된다.
+        // 곡명도 여기서 읽는다(클라이언트 값 불신) — 예측 존재 검증을 겸한다
+        Prediction prediction = predictionRepository
+                .findFirstByTargetEvent_Artist_MbidAndSongKey(artistMbid, songKey)
+                .orElseThrow(() -> new ApiNotFoundException("예측에 없는 곡입니다: " + songKey));
 
-        SongExplanationService.Explanation explanation =
-                explanationService.explain(artistMbid, songKey, songName, artist.getName());
+        SongExplanationService.Explanation explanation = explanationService.explain(
+                artistMbid, songKey, prediction.getSongName(), artist.getName());
 
         Flux<ServerSentEvent<String>> sources = Flux.just(event("sources",
                 objectMapper.writeValueAsString(explanation.sources())));

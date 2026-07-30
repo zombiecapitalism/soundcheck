@@ -16,7 +16,7 @@ setlist.fm의 과거 공연 데이터를 수집해 "이번 공연에서 어떤 �
 
 | 영역 | 스택 |
 |------|------|
-| Backend | Java 21, Spring Boot 3.x, Spring Data JPA, Spring AI |
+| Backend | Java 21, Spring Boot 4.x, Spring Data JPA, Spring AI 2.x (Jackson 3 — `tools.jackson`) |
 | Build | Gradle (Kotlin DSL) |
 | DB | PostgreSQL 16 + pgvector |
 | Batch | Spring Scheduler (규모 커지면 Spring Batch로 전환) |
@@ -32,8 +32,11 @@ setlist.fm의 과거 공연 데이터를 수집해 "이번 공연에서 어떤 �
   /src/main/java/com/encore
     /artist       아티스트 도메인
     /setlist      공연/셋리스트 도메인 (수집 포함)
-    /prediction   예측 로직
+    /prediction   예측 로직 (계산기·정확도·예상 셋리스트·유사 공연·변화 요약)
     /rag          RAG 파이프라인
+    /chat         RAG Chat (tool calling, 레이트리밋)
+    /llm          LLM 계측 (llm_call_log, 비용 추정)
+    /playlist     YouTube 재생목록 (영상 ID 캐시)
     /batch        배치 실행 이력 (collection_log — 수집/예측/임베딩 공용)
     /pipeline     일일 파이프라인 (수집 → 매칭 → 예측) + 스케줄
     /api          REST 어댑터 (컨트롤러, 응답 DTO, Problem Detail 변환)

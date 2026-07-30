@@ -21,11 +21,8 @@ const initial: StoryState = { status: 'idle', sources: [], text: '', errorMessag
 // 세션 내 재방문 캐시 — 같은 곡을 다시 열어도 서버를 다시 부르지 않는다(서버 캐시와 별개)
 const storyCache = new Map<string, { sources: ExplanationSource[]; text: string }>()
 
-export function useSongStory(
-  artistMbid: string | undefined,
-  songKey: string,
-  songName: string | undefined,
-): SongStory {
+// 곡명은 보내지 않는다 — 서버가 예측 스냅샷의 원본 곡명을 쓴다(프롬프트 주입·캐시 오염 방지)
+export function useSongStory(artistMbid: string | undefined, songKey: string): SongStory {
   const key = `${artistMbid ?? ''}:${songKey}`
   const [state, setState] = useState(() => ({ key, attempt: 0, story: initial }))
 
@@ -37,7 +34,7 @@ export function useSongStory(
   const attempt = state.key === key ? state.attempt : 0
 
   useEffect(() => {
-    if (!artistMbid || !songName || !songKey) {
+    if (!artistMbid || !songKey) {
       return
     }
     const cached = storyCache.get(key)
@@ -54,8 +51,7 @@ export function useSongStory(
     update({ ...initial, status: 'streaming' })
 
     const es = new EventSource(
-      `/api/songs/${encodeURIComponent(songKey)}/explanation` +
-        `?artistMbid=${encodeURIComponent(artistMbid)}&songName=${encodeURIComponent(songName)}`,
+      `/api/songs/${encodeURIComponent(songKey)}/explanation?artistMbid=${encodeURIComponent(artistMbid)}`,
     )
     es.addEventListener('sources', (e) => {
       sources = JSON.parse(e.data) as ExplanationSource[]
@@ -84,7 +80,7 @@ export function useSongStory(
       })
     })
     return () => es.close()
-  }, [key, attempt, artistMbid, songKey, songName])
+  }, [key, attempt, artistMbid, songKey])
 
   const retry = () =>
     setState((prev) => ({ key, attempt: (prev.key === key ? prev.attempt : 0) + 1, story: initial }))

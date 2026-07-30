@@ -128,6 +128,23 @@ GET /api/events/{id}/predictions/{songKey}
 - `evidence`(E1/E3/E4): 확률 분해 블록. `boostEffect` = 확률 − 부스트 없는 확률. v0.2 이전 스냅샷(evidence 미저장)이면 블록 전체가 null, 확장 필드만 없으면 해당 필드 null.
 - `history[].weight`: 해당 공연이 계산에 기여한 가중치 — 미연주 공연은 null.
 
+### API-04a 예상 셋리스트 (E6)
+
+```
+GET /api/events/{id}/expected-setlist
+```
+
+본편/앙코르 블록 구조. 저장하지 않고 조회 시 `SetlistComposer`(순수 함수)가 구성한다. 이벤트 없음 404, 예측 전이면 빈 블록.
+
+```json
+{ "expectedSongCount": 18,
+  "main":   [{ "order": 1, "songKey": "opener song", "songName": "Opener Song", "probability": 0.9 }],
+  "encore": [{ "order": 18, "songKey": "encore hit", "songName": "Encore Hit", "probability": 0.8 }] }
+```
+
+- 곡 수 = 유형별 평균 곡 수(없으면 전체 평균, 그마저 없으면 확률 ≥ 0.5 곡 수) 반올림.
+- 구성: 확률 상위 선발 → 앙코르 = encoreRatio ≥ 0.5(비율 내림차순, 최대 3) → 오프너 = 오프너 비율 최상위 고정 → 본편 = 평균 위치 오름차순. 동률은 rank로 결정적.
+
 ### API-04b 유사 공연 (E11)
 
 ```
@@ -200,23 +217,6 @@ GET /api/events/accuracy
    "top5Hits": 4, "top5Size": 5, "top10Hits": 8, "top10Size": 10 }]
 ```
 
-### API-04a 예상 셋리스트 (E6)
-
-```
-GET /api/events/{id}/expected-setlist
-```
-
-본편/앙코르 블록 구조. 저장하지 않고 조회 시 `SetlistComposer`(순수 함수)가 구성한다. 이벤트 없음 404, 예측 전이면 빈 블록.
-
-```json
-{ "expectedSongCount": 18,
-  "main":   [{ "order": 1, "songKey": "opener song", "songName": "Opener Song", "probability": 0.9 }],
-  "encore": [{ "order": 18, "songKey": "encore hit", "songName": "Encore Hit", "probability": 0.8 }] }
-```
-
-- 곡 수 = 유형별 평균 곡 수(없으면 전체 평균, 그마저 없으면 확률 ≥ 0.5 곡 수) 반올림.
-- 구성: 확률 상위 선발 → 앙코르 = encoreRatio ≥ 0.5(비율 내림차순, 최대 3) → 오프너 = 오프너 비율 최상위 고정 → 본편 = 평균 위치 오름차순. 동률은 rank로 결정적.
-
 ### API-06a 곡 장기 통계 (E5)
 
 ```
@@ -247,14 +247,14 @@ GET /api/artists/{mbid}/stats
 ### API-07 곡 설명 (RAG, SSE)
 
 ```
-GET /api/songs/{songKey}/explanation?artistMbid={uuid}&songName={원본 곡명}
+GET /api/songs/{songKey}/explanation?artistMbid={uuid}
 Accept: text/event-stream
 ```
 
 | 구분 | 내용 |
 |------|------|
 | 목적 | 곡 배경 설명 스트리밍 (곡 이야기) |
-| 사전 검증 | 미등록 아티스트 404 / **예측에 등장하지 않는 songKey 404** (임의 키로 LLM 비용 유출 방지) |
+| 사전 검증 | 미등록 아티스트 404 / **예측에 등장하지 않는 songKey 404** (임의 키로 LLM 비용 유출 방지). 프롬프트에 쓰는 원본 곡명은 클라이언트가 보내지 않고 서버가 `prediction.song_name`에서 읽는다 — 임의 텍스트 주입·캐시 오염 방지 |
 | 캐시 | 히트 시 LLM 미호출, 저장 본문 즉시 전송 |
 
 **SSE 이벤트 계약** (순서 보장):

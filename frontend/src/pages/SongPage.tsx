@@ -214,11 +214,7 @@ export default function SongPage() {
         <SongStatsSection artistMbid={event?.artist.mbid} songKey={songKey} />
       </Suspense>
 
-      <SongStorySection
-        artistMbid={event?.artist.mbid}
-        songKey={songKey}
-        songName={prediction.songName}
-      />
+      <SongStorySection artistMbid={event?.artist.mbid} songKey={songKey} />
     </>
   )
 }
@@ -227,13 +223,11 @@ export default function SongPage() {
 function SongStorySection({
   artistMbid,
   songKey,
-  songName,
 }: {
   artistMbid: string | undefined
   songKey: string
-  songName: string
 }) {
-  const story = useSongStory(artistMbid, songKey, songName)
+  const story = useSongStory(artistMbid, songKey)
   // 근거가 부족하면 서버(프롬프트 계약)가 "정보 없음"을 보낸다 —
   // 모델이 마침표 등을 덧붙이는 경우가 있어(실측: "정보 없음.") 정확 일치가 아니라 패턴 판정
   const noInfo = story.status === 'done' && /^정보 없음[.!]?$/.test(story.text.trim())

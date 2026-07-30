@@ -79,8 +79,7 @@ class SongExplanationControllerTest {
                         Flux.just("이 곡은", " 앨범의", " 세 번째 싱글이다.")));
 
         MvcResult result = mockMvc.perform(get("/api/songs/{songKey}/explanation", "afterlife")
-                        .param("artistMbid", artist.getMbid().toString())
-                        .param("songName", "Afterlife"))
+                        .param("artistMbid", artist.getMbid().toString()))
                 .andExpect(request().asyncStarted())
                 .andReturn();
 
@@ -99,8 +98,7 @@ class SongExplanationControllerTest {
     @Test
     void unknownArtistIsNotFound() throws Exception {
         mockMvc.perform(get("/api/songs/{songKey}/explanation", "afterlife")
-                        .param("artistMbid", UUID.randomUUID().toString())
-                        .param("songName", "Afterlife"))
+                        .param("artistMbid", UUID.randomUUID().toString()))
                 .andExpect(status().isNotFound());
     }
 
@@ -112,8 +110,7 @@ class SongExplanationControllerTest {
         persistPrediction(artist, "holy wars", "Holy Wars");
 
         mockMvc.perform(get("/api/songs/{songKey}/explanation", "made up song")
-                        .param("artistMbid", artist.getMbid().toString())
-                        .param("songName", "Made Up Song"))
+                        .param("artistMbid", artist.getMbid().toString()))
                 .andExpect(status().isNotFound());
     }
 
@@ -128,8 +125,7 @@ class SongExplanationControllerTest {
                         Flux.error(new IllegalStateException("LLM 호출 실패"))));
 
         MvcResult result = mockMvc.perform(get("/api/songs/{songKey}/explanation", "holy wars")
-                        .param("artistMbid", artist.getMbid().toString())
-                        .param("songName", "Holy Wars"))
+                        .param("artistMbid", artist.getMbid().toString()))
                 .andExpect(request().asyncStarted())
                 .andReturn();
 

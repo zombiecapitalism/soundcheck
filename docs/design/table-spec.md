@@ -4,7 +4,7 @@
 - 작성일: 2026-07-30
 - 버전: v1.0
 - DBMS: PostgreSQL 16 + pgvector (0.8.x)
-- 작성 방식: **구현 완료된 프로토타입을 역설계**하여 문서화. DDL의 권위 원천은 Flyway 마이그레이션(`backend/src/main/resources/db/migration/` V1~V7)이며, JPA는 `ddl-auto: validate`로 스키마를 따라간다. 이 문서와 DDL이 불일치하면 DDL이 정답이다.
+- 작성 방식: **구현 완료된 프로토타입을 역설계**하여 문서화. DDL의 권위 원천은 Flyway 마이그레이션(`backend/src/main/resources/db/migration/` V1~V10)이며, JPA는 `ddl-auto: validate`로 스키마를 따라간다. 이 문서와 DDL이 불일치하면 DDL이 정답이다.
 - 관련 문서: `/docs/setlist-schema.md`(설계 원본 + API 실측 검증), `/docs/design/process-spec.md`
 
 ---
@@ -366,8 +366,9 @@ RAG 생성 결과 캐시. 원천은 항상 `rag_chunk` 검색+생성이며, 새 
 | V5 | `V5__festival_mapping.sql` | festival_mapping | 키워드 없는 페스티벌 공연장 수동 등록 |
 | V6 | `V6__rag.sql` | vector 확장, rag_document, rag_chunk, HNSW 인덱스 | RAG 파이프라인 |
 | V7 | `V7__song_explanation_cache.sql` | song_explanation | LLM 생성 결과 캐시 (비용·지연 절감) |
-
-예정(구현 계획 기준): V8 `target_event.trend_summary`(P2), V9 `llm_call_log`(P3).
+| V8 | `V8__trend_summary.sql` | `target_event.trend_summary`, `trend_summary_at` | 예측 변화 LLM 요약 캐시(E4) — 재계산 시에만 갱신 |
+| V9 | `V9__llm_call_log.sql` | llm_call_log | LLM 계측(E9) — 비용·지연·캐시 히트 |
+| V10 | `V10__song_video.sql` | song_video | YouTube 재생목록(E12) 영상 ID 캐시(네거티브 캐시 포함) |
 
 ---
 
