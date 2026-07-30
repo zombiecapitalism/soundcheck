@@ -189,6 +189,34 @@ class ApiIntegrationTest {
                 .andExpect(header().string("Content-Type", containsString("application/problem+json")));
     }
 
+    /**
+     * 지난 이벤트의 타임라인은 공연일에서 잘린다 — 예측은 스냅샷으로 고정인데
+     * 타임라인만 그 뒤 공연을 포함하면 근거 수치와 어긋난다.
+     */
+    @Test
+    void predictionDetailCutsHistoryAtEventDate() throws Exception {
+        TargetEvent event = persistEvent("지난 이벤트", LocalDate.of(2026, 7, 15));
+        predictionRepository.saveAndFlush(Prediction.builder()
+                .targetEvent(event).songKey("holy wars").songName("Holy Wars")
+                .probability(new BigDecimal("1.0000")).rank((short) 1)
+                .playedCount((short) 1).sampleSize((short) 5)
+                .build());
+        for (String[] spec : new String[][] {
+                {"cut-before", "2026-07-10"}, {"cut-on", "2026-07-15"}, {"cut-after", "2026-07-20"}}) {
+            persistShow(spec[0], LocalDate.parse(spec[1]), ShowType.UNKNOWN, 0);
+            entityManager.find(Show.class, spec[0]).replaceSongs(List.of(
+                    ShowSong.builder().setIndex((short) 0).positionInSet((short) 1).positionTotal((short) 1)
+                            .songName("Holy Wars").songKey("holy wars").build()));
+        }
+        entityManager.flush();
+
+        mockMvc.perform(get("/api/events/{id}/predictions/{songKey}", event.getId(), "holy wars"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.history.length()").value(2)) // 공연일 이후(cut-after) 제외
+                .andExpect(jsonPath("$.history[0].setlistId").value("cut-on"))
+                .andExpect(jsonPath("$.history[1].setlistId").value("cut-before"));
+    }
+
     /** 공연 후: 실제 셋리스트가 연결된 이벤트는 verified=true + 적중률 조회가 가능해야 한다. */
     @Test
     void verifiedEventExposesAccuracyReport() throws Exception {

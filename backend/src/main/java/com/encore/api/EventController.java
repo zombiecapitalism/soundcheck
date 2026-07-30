@@ -6,6 +6,7 @@ import com.encore.prediction.PredictionRepository;
 import com.encore.prediction.PredictionSampling;
 import com.encore.prediction.TargetEvent;
 import com.encore.prediction.TargetEventRepository;
+import com.encore.setlist.Show;
 import com.encore.setlist.ShowRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -64,10 +65,14 @@ public class EventController {
                 .orElseThrow(() -> new ApiNotFoundException("존재하지 않는 이벤트입니다: " + id));
         Prediction prediction = predictionRepository.findByTargetEvent_IdAndSongKey(id, songKey)
                 .orElseThrow(() -> new ApiNotFoundException("예측에 없는 곡입니다: " + songKey));
-        // 아티스트 접근은 식별자뿐이라 지연 초기화가 없고, 곡 목록은 fetch join으로 로드된다
-        return PredictionDetailResponse.from(prediction, PredictionSampling.sample(
-                showRepository.findAllByArtistMbidWithSongs(event.getArtist().getMbid()),
-                prediction.getSampleSize()));
+        // 아티스트 접근은 식별자뿐이라 지연 초기화가 없고, 곡 목록은 fetch join으로 로드된다.
+        // 공연일 이후의 공연은 잘라낸다 — 지난(검증된) 이벤트에서 예측은 스냅샷으로 고정인데
+        // 타임라인만 새 공연을 포함하면 헤더의 근거 수치와 어긋난다. 미래 이벤트에는 영향 없다.
+        List<Show> shows = showRepository.findAllByArtistMbidWithSongs(event.getArtist().getMbid()).stream()
+                .filter(show -> !show.getEventDate().isAfter(event.getEventDate()))
+                .toList();
+        return PredictionDetailResponse.from(prediction,
+                PredictionSampling.sample(shows, prediction.getSampleSize()));
     }
 
     /**
