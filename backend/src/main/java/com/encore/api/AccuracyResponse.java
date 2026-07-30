@@ -16,6 +16,9 @@ public record AccuracyResponse(
         BigDecimal precisionAtK,
         int totalHits,
         BigDecimal recall,
+        BigDecimal f1,
+        TopN top5,
+        TopN top10,
         List<SongResult> results,
         List<Surprise> surprises
 ) {
@@ -27,6 +30,9 @@ public record AccuracyResponse(
     public record Surprise(String songName, int actualPosition) {
     }
 
+    public record TopN(int size, int hits, BigDecimal accuracy) {
+    }
+
     public static AccuracyResponse from(AccuracyReport report) {
         return new AccuracyResponse(
                 report.actualSongCount(),
@@ -35,6 +41,9 @@ public record AccuracyResponse(
                 report.precisionAtK(),
                 report.totalHits(),
                 report.recall(),
+                report.f1(),
+                new TopN(report.top5().size(), report.top5().hits(), report.top5().accuracy()),
+                new TopN(report.top10().size(), report.top10().hits(), report.top10().accuracy()),
                 report.results().stream()
                         .map(r -> new SongResult(r.rank(), r.songKey(), r.songName(), r.probability(),
                                 r.played(), r.actualPosition()))

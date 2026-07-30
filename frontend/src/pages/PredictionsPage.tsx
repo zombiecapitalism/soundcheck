@@ -81,6 +81,10 @@ export default function PredictionsPage() {
             {accuracy.topKHits}곡 적중
             {accuracy.surprises.length > 0 && <> · 예측 밖 {accuracy.surprises.length}곡</>}
           </p>
+          <p className="accuracy-detail">
+            F1 {formatPercent(accuracy.f1)} · Top-5 {accuracy.top5.hits}/{accuracy.top5.size} ·
+            Top-10 {accuracy.top10.hits}/{accuracy.top10.size}
+          </p>
           {accuracy.surprises.length > 0 && (
             <p className="accuracy-surprises">
               놓친 곡: {accuracy.surprises.map((s) => s.songName).join(', ')}

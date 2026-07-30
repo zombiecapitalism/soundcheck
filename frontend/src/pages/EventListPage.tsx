@@ -56,6 +56,10 @@ export default function EventListPage() {
                     {formatEventDate(summary.eventDate)} · 상위 {summary.topK}곡 중{' '}
                     {summary.topKHits}곡 적중
                   </div>
+                  <div className="event-card-meta">
+                    F1 {formatPercent(summary.f1)} · Top-5 {summary.top5Hits}/{summary.top5Size} ·
+                    Top-10 {summary.top10Hits}/{summary.top10Size}
+                  </div>
                 </Link>
               </li>
             ))}

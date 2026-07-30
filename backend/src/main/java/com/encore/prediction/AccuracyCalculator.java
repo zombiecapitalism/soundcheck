@@ -36,8 +36,15 @@ public final class AccuracyCalculator {
             BigDecimal precisionAtK,
             int totalHits,
             BigDecimal recall,
+            BigDecimal f1,
+            TopN top5,
+            TopN top10,
             List<SongResult> results,
             List<Surprise> surprises) {
+    }
+
+    /** 상위 N곡 성적. 예측이 N곡보다 적으면 있는 만큼만 분모로 쓴다(size). */
+    public record TopN(int size, int hits, BigDecimal accuracy) {
     }
 
     private AccuracyCalculator() {
@@ -86,15 +93,45 @@ public final class AccuracyCalculator {
         }
         surprises.sort(Comparator.comparingInt(Surprise::actualPosition));
 
+        BigDecimal precisionAtK = ratio(topKHits, topK);
+        BigDecimal recall = ratio(totalHits, actualSongCount);
         return new AccuracyReport(
                 actualSongCount,
                 topK,
                 topKHits,
-                ratio(topKHits, topK),
+                precisionAtK,
                 totalHits,
-                ratio(totalHits, actualSongCount),
+                recall,
+                f1(precisionAtK, recall),
+                topN(results, 5),
+                topN(results, 10),
                 List.copyOf(results),
                 List.copyOf(surprises));
+    }
+
+    /**
+     * F1 = 2PR/(P+R). Precision@K는 예습 효율, Recall은 커버리지라 서로 반대로 움직일 수 있어
+     * 조화 평균으로 한 줄 성적을 만든다. 둘 다 0이면 0 (0 나눗셈 방지).
+     */
+    static BigDecimal f1(BigDecimal precision, BigDecimal recall) {
+        BigDecimal sum = precision.add(recall);
+        if (sum.signum() == 0) {
+            return BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
+        }
+        return precision.multiply(recall).multiply(BigDecimal.TWO)
+                .divide(sum, 4, RoundingMode.HALF_UP);
+    }
+
+    /** "상위 N곡만 예습했다면" — K(실제 곡 수)와 무관한 고정 창이라 이벤트 간 비교가 된다. */
+    private static TopN topN(List<SongResult> results, int n) {
+        int size = Math.min(n, results.size());
+        int hits = 0;
+        for (int i = 0; i < size; i++) {
+            if (results.get(i).played()) {
+                hits++;
+            }
+        }
+        return new TopN(size, hits, ratio(hits, size));
     }
 
     private static BigDecimal ratio(int numerator, int denominator) {

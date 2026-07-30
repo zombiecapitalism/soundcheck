@@ -56,6 +56,13 @@ export interface PredictionDetail {
   }[]
 }
 
+/** 상위 N곡 성적 — 예측이 N곡보다 적으면 size가 분모. */
+export interface TopNAccuracy {
+  size: number
+  hits: number
+  accuracy: number
+}
+
 /** 공연 후 예측 vs 실제 비교. precisionAtK가 헤드라인: 상위 K곡 예습 시 적중 비율. */
 export interface AccuracyReport {
   actualSongCount: number
@@ -64,6 +71,10 @@ export interface AccuracyReport {
   precisionAtK: number
   totalHits: number
   recall: number
+  /** Precision@K와 Recall의 조화 평균 */
+  f1: number
+  top5: TopNAccuracy
+  top10: TopNAccuracy
   results: {
     rank: number
     songKey: string
@@ -89,6 +100,11 @@ export interface AccuracySummary {
   topK: number
   topKHits: number
   precisionAtK: number
+  f1: number
+  top5Hits: number
+  top5Size: number
+  top10Hits: number
+  top10Size: number
 }
 
 /** 곡 배경 설명의 출처 — RAG 응답에 항상 함께 온다. */

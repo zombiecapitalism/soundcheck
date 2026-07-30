@@ -143,6 +143,74 @@ class AccuracyCalculatorTest {
         assertThat(report.recall()).isEqualByComparingTo("0.3333");
     }
 
+    /** F1은 Precision@K와 Recall의 조화 평균 — 두 지표가 반대로 움직일 때 한 줄 성적. */
+    @Test
+    void computesF1FromPrecisionAndRecall() {
+        // computesPrecisionAtKAndRecall과 같은 상황: P=0.5, R=1.0 → F1 = 2·0.5·1.0/1.5 = 0.6667
+        List<Prediction> predictions = List.of(
+                prediction(1, "holy wars", "Holy Wars", "0.95"),
+                prediction(2, "trust", "Trust", "0.80"),
+                prediction(3, "sweating bullets", "Sweating Bullets", "0.60"));
+        Show actual = actualShow(
+                song("Holy Wars", "holy wars", 1, false),
+                song("Sweating Bullets", "sweating bullets", 2, false));
+
+        AccuracyReport report = AccuracyCalculator.evaluate(predictions, actual);
+
+        assertThat(report.f1()).isEqualByComparingTo("0.6667");
+    }
+
+    /** P도 R도 0이면 F1도 0 — 0으로 나누지 않는다. */
+    @Test
+    void f1IsZeroWhenNothingHit() {
+        List<Prediction> predictions = List.of(prediction(1, "a", "A", "0.9"));
+        Show actual = actualShow(song("B", "b", 1, false));
+
+        AccuracyReport report = AccuracyCalculator.evaluate(predictions, actual);
+
+        assertThat(report.precisionAtK()).isEqualByComparingTo("0.0000");
+        assertThat(report.recall()).isEqualByComparingTo("0.0000");
+        assertThat(report.f1()).isEqualByComparingTo("0.0000");
+    }
+
+    /** Top-N은 실제 곡 수(K)와 무관한 고정 창 — 상위 5·10곡 예습 성적. */
+    @Test
+    void computesTopNAccuracy() {
+        // 상위 5곡 중 1·3·5위 적중, 6위(적중)는 Top-5 밖
+        List<Prediction> predictions = List.of(
+                prediction(1, "s1", "S1", "0.9"), prediction(2, "s2", "S2", "0.8"),
+                prediction(3, "s3", "S3", "0.7"), prediction(4, "s4", "S4", "0.6"),
+                prediction(5, "s5", "S5", "0.5"), prediction(6, "s6", "S6", "0.4"));
+        Show actual = actualShow(
+                song("S1", "s1", 1, false), song("S3", "s3", 2, false),
+                song("S5", "s5", 3, false), song("S6", "s6", 4, false));
+
+        AccuracyReport report = AccuracyCalculator.evaluate(predictions, actual);
+
+        assertThat(report.top5().size()).isEqualTo(5);
+        assertThat(report.top5().hits()).isEqualTo(3);
+        assertThat(report.top5().accuracy()).isEqualByComparingTo("0.6000");
+        // 예측이 6곡뿐이라 Top-10 창은 6곡으로 줄고 분모도 6이다
+        assertThat(report.top10().size()).isEqualTo(6);
+        assertThat(report.top10().hits()).isEqualTo(4);
+        assertThat(report.top10().accuracy()).isEqualByComparingTo("0.6667");
+    }
+
+    /** 예측이 N곡보다 적은 짧은 셋 — 있는 만큼만 분모로 쓰고 0으로 나누지 않는다. */
+    @Test
+    void topNClampsToPredictionCount() {
+        List<Prediction> predictions = List.of(
+                prediction(1, "a", "A", "0.9"), prediction(2, "b", "B", "0.8"));
+        Show actual = actualShow(song("A", "a", 1, false));
+
+        AccuracyReport report = AccuracyCalculator.evaluate(predictions, actual);
+
+        assertThat(report.top5().size()).isEqualTo(2);
+        assertThat(report.top5().hits()).isEqualTo(1);
+        assertThat(report.top5().accuracy()).isEqualByComparingTo("0.5000");
+        assertThat(report.top10().size()).isEqualTo(2);
+    }
+
     @Test
     void rejectsSonglessActualSetlist() {
         List<Prediction> predictions = List.of(prediction(1, "a", "A", "0.9"));

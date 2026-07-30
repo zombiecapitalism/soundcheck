@@ -17,7 +17,12 @@ public record AccuracySummaryResponse(
         int actualSongCount,
         int topK,
         int topKHits,
-        BigDecimal precisionAtK
+        BigDecimal precisionAtK,
+        BigDecimal f1,
+        int top5Hits,
+        int top5Size,
+        int top10Hits,
+        int top10Size
 ) {
 
     /** event는 artist·actualSetlist가 fetch join으로 로드된 상태를 전제한다. */
@@ -31,6 +36,11 @@ public record AccuracySummaryResponse(
                 report.actualSongCount(),
                 report.topK(),
                 report.topKHits(),
-                report.precisionAtK());
+                report.precisionAtK(),
+                report.f1(),
+                report.top5().hits(),
+                report.top5().size(),
+                report.top10().hits(),
+                report.top10().size());
     }
 }

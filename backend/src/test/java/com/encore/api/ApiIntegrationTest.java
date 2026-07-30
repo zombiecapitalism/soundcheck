@@ -252,6 +252,11 @@ class ApiIntegrationTest {
                 .andExpect(jsonPath("$.topK").value(2))
                 .andExpect(jsonPath("$.topKHits").value(1))
                 .andExpect(jsonPath("$.precisionAtK").value(closeTo(0.5, 1e-9)))
+                // P=0.5, R=0.5(2곡 중 holy wars만 예측에 있음) → F1=0.5. Top-5 창은 예측 2곡뿐이라 분모 2
+                .andExpect(jsonPath("$.f1").value(closeTo(0.5, 1e-9)))
+                .andExpect(jsonPath("$.top5.size").value(2))
+                .andExpect(jsonPath("$.top5.hits").value(1))
+                .andExpect(jsonPath("$.top5.accuracy").value(closeTo(0.5, 1e-9)))
                 .andExpect(jsonPath("$.results[0].played").value(true))
                 .andExpect(jsonPath("$.results[1].played").value(false))
                 .andExpect(jsonPath("$.surprises[0].songName").value("Symphony of Destruction"));
