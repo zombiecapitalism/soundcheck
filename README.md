@@ -10,10 +10,11 @@
 - **내한 자동 감지** — 별도 크롤링 없이 수집 데이터의 한국(KR) 미래 공연을 감지해 원클릭 등록
 - **관리자 콘솔** — 아티스트 검색·등록, 이벤트 등록, 배치 수동 트리거·이력 대시보드 (Basic 인증)
 - **일일 파이프라인** — 매일 새벽 수집 → 적중률 매칭 → 예측 재계산이 자동으로 이어진다
+- **곡 이야기 (RAG)** — Wikipedia 문서를 청킹·임베딩(pgvector)해 두고, 곡 상세에서 근거 기반 배경 설명을 SSE로 스트리밍. 출처 링크 필수, 근거 없으면 "정보 없음", 가사 원문 미인용
 
 ## 스택
 
-- Backend: Java 21, Spring Boot 4.1.0, Gradle(Kotlin DSL), Lombok
+- Backend: Java 21, Spring Boot 4.1.0, Spring AI 2.0 (OpenAI), Gradle(Kotlin DSL), Lombok
 - DB: PostgreSQL 16 + pgvector (Docker), Flyway 마이그레이션
 - Frontend: React 19 + TypeScript + Vite, TanStack Query, React Router
 
@@ -33,6 +34,7 @@ cp .env.example .env
 | `DB_HOST` / `DB_PORT` / `DB_NAME` | 기본값(localhost / 5432 / encore) 그대로 사용 가능 |
 | `DB_USERNAME` / `DB_PASSWORD` | 로컬 개발용 계정 — 원하는 값으로 지정 (docker-compose와 backend가 동일한 값을 참조) |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | 관리자 콘솔(`/admin`) Basic 인증 계정 |
+| `OPENAI_API_KEY` | RAG(곡 이야기)용 — 임베딩(text-embedding-3-small)과 생성 모두 사용. 비워 두면 앱은 뜨되 곡 이야기만 비활성 동작 |
 
 `backend`는 `application.yml`에서 이 값들을 환경변수로만 참조하며, 시크릿을 코드/설정 파일에 하드코딩하지 않는다.
 

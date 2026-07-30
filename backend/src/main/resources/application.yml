@@ -12,6 +12,18 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+  ai:
+    openai:
+      # 비어 있으면 앱은 뜨되 RAG 호출 시점에 실패한다 — RAG는 부가 기능이라 기동을 막지 않는다
+      api-key: ${OPENAI_API_KEY:}
+      chat:
+        options:
+          model: ${OPENAI_CHAT_MODEL:gpt-4o-mini}
+          temperature: 0.3
+      embedding:
+        options:
+          model: text-embedding-3-small
+          dimensions: 1536  # rag_chunk.embedding vector(1536)과 일치해야 한다
 
 setlist-fm:
   base-url: https://api.setlist.fm/rest
@@ -25,3 +37,9 @@ encore:
     sample-size: 20               # 집계 표본 - 최근 N회 공연
     recency-decay: 0.95           # 최신 가중치 감쇠(회차당 곱). 1.0이면 감쇠 없음
     matching-show-type-boost: 1.5 # expected_show_type과 같은 유형인 공연의 가중치 배수
+  rag:
+    top-k: 5                      # 유사도 검색 상위 청크 수 (PRD 8장)
+    min-score: 0.35               # 코사인 유사도 하한 — 미만이면 근거로 안 쓴다 ("정보 없음")
+    chunk-target-tokens: 650      # 청크 목표 크기 (PRD: 500~800 토큰)
+    max-content-chars: 40000      # 문서당 임베딩할 본문 상한 (비용/노이즈 제어)
+    max-songs-per-artist: 30      # 수집 배치에서 아티스트당 곡 문서 상한

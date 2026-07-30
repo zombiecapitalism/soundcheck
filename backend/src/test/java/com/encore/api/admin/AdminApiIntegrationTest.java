@@ -59,6 +59,9 @@ class AdminApiIntegrationTest {
 
     @MockitoBean
     private SetlistFmClient setlistFmClient;
+    /** RAG 수집은 Wikipedia·OpenAI를 실제로 부르므로 통째로 목 — 트리거 경계만 검증한다. */
+    @MockitoBean
+    private com.encore.rag.RagIngester ragIngester;
 
     /**
      * 401은 Problem Detail이어야 하고 WWW-Authenticate 헤더가 없어야 한다 —
@@ -73,6 +76,7 @@ class AdminApiIntegrationTest {
                         org.hamcrest.Matchers.containsString("application/problem+json")))
                 .andExpect(jsonPath("$.status").value(401));
         mockMvc.perform(post("/api/admin/batch/collect")).andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/admin/batch/rag-ingest")).andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/admin/logs").with(httpBasic(USER, "wrong-password")))
                 .andExpect(status().isUnauthorized())
                 .andExpect(header().doesNotExist("WWW-Authenticate"));
@@ -236,6 +240,34 @@ class AdminApiIntegrationTest {
         } finally {
             batchLock.releaseCollect();
         }
+    }
+
+    @Test
+    void ragIngestConflictsWhileAlreadyRunning() throws Exception {
+        assertThat(batchLock.tryAcquireRagIngest()).isTrue();
+        try {
+            mockMvc.perform(post("/api/admin/batch/rag-ingest").with(httpBasic(USER, PASS)))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.title").value("이미 실행 중"));
+        } finally {
+            batchLock.releaseRagIngest();
+        }
+    }
+
+    @Test
+    void ragIngestStartsInBackgroundAndReleasesLock() throws Exception {
+        mockMvc.perform(post("/api/admin/batch/rag-ingest").with(httpBasic(USER, PASS)))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.started").value(true));
+
+        for (int i = 0; i < 50 && batchLock.isRagIngesting(); i++) {
+            Thread.sleep(100);
+        }
+        assertThat(batchLock.isRagIngesting()).isFalse();
+
+        mockMvc.perform(get("/api/admin/logs").with(httpBasic(USER, PASS)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ragIngesting").value(false));
     }
 
     @Test

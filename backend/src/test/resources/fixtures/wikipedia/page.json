@@ -1,0 +1,23 @@
+{
+  "batchcomplete": true,
+  "query": {
+    "redirects": [
+      { "from": "Afterlife (Avenged Sevenfold Song)", "to": "Afterlife (Avenged Sevenfold song)" }
+    ],
+    "pages": [
+      {
+        "pageid": 18447919,
+        "ns": 0,
+        "title": "Afterlife (Avenged Sevenfold song)",
+        "extract": "\"Afterlife\" is a song by American heavy metal band Avenged Sevenfold. It was released as the third single from their self-titled album.\n\n== Background ==\nThe song features a string arrangement and prominent double bass drumming.",
+        "contentmodel": "wikitext",
+        "pagelanguage": "en",
+        "touched": "2026-06-01T00:00:00Z",
+        "length": 12345,
+        "fullurl": "https://en.wikipedia.org/wiki/Afterlife_(Avenged_Sevenfold_song)",
+        "editurl": "https://en.wikipedia.org/w/index.php?title=Afterlife_(Avenged_Sevenfold_song)&action=edit",
+        "canonicalurl": "https://en.wikipedia.org/wiki/Afterlife_(Avenged_Sevenfold_song)"
+      }
+    ]
+  }
+}

@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class BatchLock {
 
     private final AtomicBoolean collecting = new AtomicBoolean(false);
+    private final AtomicBoolean ragIngesting = new AtomicBoolean(false);
 
     /** 획득 성공 시 true. 성공했다면 반드시 finally에서 releaseCollect를 호출할 것. */
     public boolean tryAcquireCollect() {
@@ -25,5 +26,18 @@ public class BatchLock {
 
     public boolean isCollecting() {
         return collecting.get();
+    }
+
+    /** RAG 문서 수집(임베딩) — 수집 락과 독립이다. 외부 API·비용 소모가 커서 중복 실행만 막는다. */
+    public boolean tryAcquireRagIngest() {
+        return ragIngesting.compareAndSet(false, true);
+    }
+
+    public void releaseRagIngest() {
+        ragIngesting.set(false);
+    }
+
+    public boolean isRagIngesting() {
+        return ragIngesting.get();
     }
 }

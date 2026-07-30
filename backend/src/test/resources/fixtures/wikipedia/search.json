@@ -1,0 +1,18 @@
+{
+  "batchcomplete": true,
+  "continue": { "sroffset": 1, "continue": "-||" },
+  "query": {
+    "searchinfo": { "totalhits": 231 },
+    "search": [
+      {
+        "ns": 0,
+        "title": "Afterlife (Avenged Sevenfold song)",
+        "pageid": 18447919,
+        "size": 12345,
+        "wordcount": 1543,
+        "snippet": "\"<span class=\"searchmatch\">Afterlife</span>\" is a song by American heavy metal band Avenged Sevenfold",
+        "timestamp": "2026-05-01T00:00:00Z"
+      }
+    ]
+  }
+}
