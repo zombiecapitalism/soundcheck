@@ -2,6 +2,7 @@ package com.encore.api.admin;
 
 import com.encore.batch.BatchLock;
 import com.encore.batch.CollectionLog;
+import com.encore.prediction.AccuracyService;
 import com.encore.prediction.PredictionBatch;
 import com.encore.setlist.SetlistCollector;
 import org.slf4j.Logger;
@@ -25,14 +26,16 @@ public class AdminBatchService {
 
     private final SetlistCollector collector;
     private final PredictionBatch predictionBatch;
+    private final AccuracyService accuracyService;
     private final BatchLock batchLock;
     private final AsyncTaskExecutor taskExecutor;
 
     public AdminBatchService(SetlistCollector collector, PredictionBatch predictionBatch,
-                             BatchLock batchLock,
+                             AccuracyService accuracyService, BatchLock batchLock,
                              @Qualifier("applicationTaskExecutor") AsyncTaskExecutor taskExecutor) {
         this.collector = collector;
         this.predictionBatch = predictionBatch;
+        this.accuracyService = accuracyService;
         this.batchLock = batchLock;
         this.taskExecutor = taskExecutor;
     }
@@ -60,7 +63,12 @@ public class AdminBatchService {
         return batchLock.isCollecting();
     }
 
+    /** 지난 이벤트의 실제 셋리스트 매칭(적중률 정답 채우기) 후 다가오는 이벤트를 재계산한다. */
     public List<CollectionLog> predictNow() {
+        int matched = accuracyService.matchPastEvents();
+        if (matched > 0) {
+            log.info("적중률 검증용 실제 셋리스트 {}건 연결", matched);
+        }
         return predictionBatch.predictUpcoming();
     }
 }

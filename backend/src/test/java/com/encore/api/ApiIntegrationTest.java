@@ -142,6 +142,58 @@ class ApiIntegrationTest {
                 .andExpect(content().json("[]"));
     }
 
+    /** 공연 후: 실제 셋리스트가 연결된 이벤트는 verified=true + 적중률 조회가 가능해야 한다. */
+    @Test
+    void verifiedEventExposesAccuracyReport() throws Exception {
+        TargetEvent event = persistEvent("검증된 이벤트", LocalDate.of(2026, 7, 1));
+        predictionRepository.saveAll(List.of(
+                Prediction.builder()
+                        .targetEvent(event).songKey("holy wars").songName("Holy Wars")
+                        .probability(new BigDecimal("0.9500")).rank((short) 1)
+                        .playedCount((short) 19).sampleSize((short) 20)
+                        .build(),
+                Prediction.builder()
+                        .targetEvent(event).songKey("trust").songName("Trust")
+                        .probability(new BigDecimal("0.6000")).rank((short) 2)
+                        .playedCount((short) 12).sampleSize((short) 20)
+                        .build()));
+        persistShow("acc-s1", LocalDate.of(2026, 7, 1), ShowType.FESTIVAL, 0);
+        Show actual = entityManager.find(Show.class, "acc-s1");
+        actual.replaceSongs(List.of(
+                ShowSong.builder().setIndex((short) 0).positionInSet((short) 1).positionTotal((short) 1)
+                        .songName("Holy Wars").songKey("holy wars").build(),
+                ShowSong.builder().setIndex((short) 0).positionInSet((short) 2).positionTotal((short) 2)
+                        .songName("Symphony of Destruction").songKey("symphony of destruction").build()));
+        event.recordActualSetlist(actual);
+        entityManager.flush();
+
+        mockMvc.perform(get("/api/events"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].verified").value(true));
+
+        mockMvc.perform(get("/api/events/{id}/accuracy", event.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.actualSongCount").value(2))
+                .andExpect(jsonPath("$.topK").value(2))
+                .andExpect(jsonPath("$.topKHits").value(1))
+                .andExpect(jsonPath("$.precisionAtK").value(closeTo(0.5, 1e-9)))
+                .andExpect(jsonPath("$.results[0].played").value(true))
+                .andExpect(jsonPath("$.results[1].played").value(false))
+                .andExpect(jsonPath("$.surprises[0].songName").value("Symphony of Destruction"));
+    }
+
+    /** 아직 실제 셋리스트가 연결되지 않은 이벤트의 적중률 조회는 404 Problem이다. */
+    @Test
+    void accuracyIsNotFoundBeforeVerification() throws Exception {
+        TargetEvent event = persistEvent("미검증 이벤트", LocalDate.of(2026, 10, 2));
+
+        mockMvc.perform(get("/api/events"))
+                .andExpect(jsonPath("$[0].verified").value(false));
+        mockMvc.perform(get("/api/events/{id}/accuracy", event.getId()))
+                .andExpect(status().isNotFound())
+                .andExpect(header().string("Content-Type", containsString("application/problem+json")));
+    }
+
     @Test
     void unknownEventProducesProblemDetail() throws Exception {
         mockMvc.perform(get("/api/events/999999/predictions"))

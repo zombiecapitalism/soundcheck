@@ -14,4 +14,7 @@ public interface TargetEventRepository extends JpaRepository<TargetEvent, Long> 
     /** 목록 응답에 아티스트 이름이 필요하므로 fetch join — open-in-view가 꺼져 있어 지연 로딩이 안 된다. */
     @Query("select e from TargetEvent e join fetch e.artist order by e.eventDate asc, e.id asc")
     List<TargetEvent> findAllWithArtist();
+
+    /** 공연이 끝났는데 아직 실제 셋리스트가 연결되지 않은 이벤트 — 적중률 매칭 대상. */
+    List<TargetEvent> findByEventDateBeforeAndActualSetlistIsNull(LocalDate date);
 }

@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,6 +23,9 @@ public interface ShowRepository extends JpaRepository<Show, String> {
             order by s.eventDate desc, s.setlistId desc
             """)
     List<Show> findAllByArtistMbidWithSongs(@Param("artistMbid") UUID artistMbid);
+
+    /** 적중률 매칭용 — 같은 아티스트·공연일의 수집 공연. 같은 날 두 건이면 호출자가 고른다. */
+    List<Show> findByArtist_MbidAndEventDate(UUID artistMbid, LocalDate eventDate);
 
     long countByArtist_Mbid(UUID artistMbid);
 

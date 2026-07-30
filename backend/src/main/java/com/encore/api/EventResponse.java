@@ -13,6 +13,7 @@ public record EventResponse(
         LocalDate eventDate,
         String venueName,
         ShowType expectedShowType,
+        boolean verified,
         ArtistSummary artist
 ) {
 
@@ -27,6 +28,8 @@ public record EventResponse(
                 event.getEventDate(),
                 event.getVenueName(),
                 event.getExpectedShowType(),
+                // 실제 셋리스트가 연결됐으면 적중률을 볼 수 있다 (null 체크만이라 lazy 초기화 없음)
+                event.isVerifiable(),
                 new ArtistSummary(event.getArtist().getMbid(), event.getArtist().getName()));
     }
 }

@@ -1,7 +1,10 @@
 package com.encore.api;
 
+import com.encore.prediction.AccuracyCalculator;
 import com.encore.prediction.PredictionRepository;
+import com.encore.prediction.TargetEvent;
 import com.encore.prediction.TargetEventRepository;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -43,5 +46,22 @@ public class EventController {
         return predictionRepository.findByTargetEvent_IdOrderByRankAsc(id).stream()
                 .map(PredictionResponse::from)
                 .toList();
+    }
+
+    /**
+     * 공연 후 적중률 — 공연 전 마지막 예측(스냅샷)과 실제 셋리스트의 비교.
+     * 실제 셋리스트의 곡 목록을 지연 로딩하므로 트랜잭션이 필요하다(open-in-view 꺼짐).
+     */
+    @GetMapping("/{id}/accuracy")
+    @Transactional(readOnly = true)
+    public AccuracyResponse accuracy(@PathVariable Long id) {
+        TargetEvent event = targetEventRepository.findById(id)
+                .orElseThrow(() -> new ApiNotFoundException("존재하지 않는 이벤트입니다: " + id));
+        if (!event.isVerifiable()) {
+            throw new ApiNotFoundException("아직 실제 셋리스트가 연결되지 않았습니다: " + event.getEventName());
+        }
+        return AccuracyResponse.from(AccuracyCalculator.evaluate(
+                predictionRepository.findByTargetEvent_IdOrderByRankAsc(id),
+                event.getActualSetlist()));
     }
 }
