@@ -7,6 +7,7 @@ import com.encore.prediction.PredictionCalculator.Evidence;
 import com.encore.prediction.PredictionRepository;
 import com.encore.prediction.PredictionSampling;
 import com.encore.prediction.SetlistComposer;
+import com.encore.prediction.SimilarShowScorer;
 import com.encore.prediction.TargetEvent;
 import com.encore.prediction.TargetEventRepository;
 import com.encore.setlist.Show;
@@ -146,6 +147,27 @@ public class EventController {
                 prediction.getAvgPosition(),
                 prediction.getEncoreRatio(),
                 openerRate);
+    }
+
+    /**
+     * 유사 공연(E11) — 과거 공연 중 예측 대상과 가장 비슷한 상위 3건 + 셋리스트.
+     * 점수: 유형 일치(0.4) + 시기 근접(0.3, 반감기 1년) + 예측 상위 20곡과의 Jaccard(0.3).
+     */
+    @GetMapping("/{id}/similar-shows")
+    public SimilarShowsResponse similarShows(@PathVariable Long id) {
+        TargetEvent event = targetEventRepository.findById(id)
+                .orElseThrow(() -> new ApiNotFoundException("존재하지 않는 이벤트입니다: " + id));
+        java.util.Set<String> topKeys = predictionRepository
+                .findByTargetEvent_IdOrderByRankAsc(id).stream()
+                .limit(20)
+                .map(Prediction::getSongKey)
+                .collect(java.util.stream.Collectors.toSet());
+        List<Show> pastShows = showRepository
+                .findAllByArtistMbidWithSongs(event.getArtist().getMbid()).stream()
+                .filter(show -> show.getEventDate().isBefore(event.getEventDate()))
+                .toList();
+        return SimilarShowsResponse.from(SimilarShowScorer.topSimilar(
+                pastShows, event.getExpectedShowType(), event.getEventDate(), topKeys, 3));
     }
 
     /**

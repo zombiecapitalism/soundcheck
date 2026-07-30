@@ -128,6 +128,20 @@ GET /api/events/{id}/predictions/{songKey}
 - `evidence`(E1/E3/E4): 확률 분해 블록. `boostEffect` = 확률 − 부스트 없는 확률. v0.2 이전 스냅샷(evidence 미저장)이면 블록 전체가 null, 확장 필드만 없으면 해당 필드 null.
 - `history[].weight`: 해당 공연이 계산에 기여한 가중치 — 미연주 공연은 null.
 
+### API-04b 유사 공연 (E11)
+
+```
+GET /api/events/{id}/similar-shows
+```
+
+과거 공연 중 예측 대상과 가장 비슷한 상위 3건 + 셋리스트. 점수 = 유형 일치(0.4) + 시기 근접(0.3, 반감기 365일) + 예측 상위 20곡과 실제 셋의 Jaccard(0.3). 이벤트 없음 404, 비교할 공연 없으면 빈 배열.
+
+```json
+{ "shows": [{ "setlistId": "...", "eventDate": "2026-07-27", "venueName": "...", "cityName": "...",
+              "showType": "FESTIVAL", "score": 0.8712, "typeMatch": true, "overlapCount": 14,
+              "setlist": [{ "position": 1, "songName": "...", "encore": false }] }] }
+```
+
 ### API-05 적중률 (단건)
 
 ```

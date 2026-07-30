@@ -160,6 +160,21 @@ export interface ExpectedSetlist {
   encore: { order: number; songKey: string; songName: string; probability: number }[]
 }
 
+/** 유사 공연(E11) — 예측 대상과 가장 비슷한 과거 공연 상위 3. */
+export interface SimilarShows {
+  shows: {
+    setlistId: string
+    eventDate: string
+    venueName: string | null
+    cityName: string | null
+    showType: ShowType
+    score: number
+    typeMatch: boolean
+    overlapCount: number
+    setlist: { position: number; songName: string; encore: boolean }[]
+  }[]
+}
+
 /** 곡의 장기 통계(E5) — 예측 표본(최근 20회)과 달리 수집된 전체 공연 대상. */
 export interface SongStats {
   yearly: { year: number; totalShows: number; playedShows: number }[]

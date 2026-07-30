@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router'
 import { useAccuracy, useArtist, useEvent, useExpectedSetlist, usePredictions } from '../api/queries'
 import ChatSection from '../components/ChatSection'
 import ProbabilityBar from '../components/ProbabilityBar'
+import SimilarShowsSection from '../components/SimilarShowsSection'
 import StatusView from '../components/StatusView'
 import { usePracticeChecklist } from '../hooks/usePracticeChecklist'
 import { COURSES, buildCourse, practiceProgress, type CourseId, type CourseTier } from '../lib/practice'
@@ -267,6 +268,8 @@ export default function PredictionsPage() {
           </ol>
         </>
       )}
+
+      {predictions && predictions.length > 0 && <SimilarShowsSection eventId={eventId} />}
 
       {predictions && predictions.length > 0 && <ChatSection eventId={eventId} />}
     </>

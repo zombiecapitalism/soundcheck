@@ -64,6 +64,15 @@ export function useExpectedSetlist(eventId: number, enabled: boolean) {
   })
 }
 
+/** 유사 공연(E11) — 참고할 만한 최근 공연 카드. */
+export function useSimilarShows(eventId: number) {
+  return useQuery({
+    queryKey: ['events', eventId, 'similar-shows'],
+    queryFn: () => api.similarShows(eventId),
+    enabled: Number.isFinite(eventId),
+  })
+}
+
 /** 곡 장기 통계(E5) — 곡 상세 차트용. 404(연주 기록 없음)는 화면에서 섹션 생략. */
 export function useSongStats(mbid: string | undefined, songKey: string) {
   return useQuery({
