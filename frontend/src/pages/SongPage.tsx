@@ -177,7 +177,14 @@ function SongStorySection({
           </p>
         )
       )}
-      {story.status === 'error' && <p className="story-error">{story.errorMessage}</p>}
+      {story.status === 'error' && (
+        <p className="story-error">
+          {story.errorMessage}{' '}
+          <button type="button" className="story-retry" onClick={story.retry}>
+            다시 시도
+          </button>
+        </p>
+      )}
       {story.sources.length > 0 && !noInfo && (
         <p className="story-sources">
           출처:{' '}
