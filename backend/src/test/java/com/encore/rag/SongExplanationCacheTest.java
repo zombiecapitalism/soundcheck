@@ -58,7 +58,9 @@ class SongExplanationCacheTest {
                 .thenReturn(generated);
         ChatClient.Builder builder = mock(ChatClient.Builder.class, Mockito.RETURNS_SELF);
         when(builder.build()).thenReturn(chatClient);
-        return new SongExplanationService(retriever, cache, builder);
+        // 계측(E9)은 부가 기능 — 이 테스트의 관심사가 아니므로 목으로 무시한다
+        return new SongExplanationService(retriever, cache, builder,
+                mock(com.encore.llm.LlmCallRecorder.class));
     }
 
     private static final List<RetrievedChunk> CHUNKS = List.of(

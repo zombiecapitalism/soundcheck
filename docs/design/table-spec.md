@@ -238,6 +238,23 @@ venue/tour명에 "festival"/"페스티벌"이 없는 페스티벌 공연장(예:
 | `ck_prediction_encore_ratio` | encore_ratio IS NULL OR ∈ [0, 1] |
 | `ck_prediction_played_within_sample` | 0 ≤ played_count ≤ sample_size |
 
+### 4.6a llm_call_log — LLM 호출 이력 (E9, V9)
+
+호출마다 1행. 비용·지연·캐시 효율을 관리자 대시보드(`/api/admin/ai-dashboard`)에서 오늘(KST) 기준으로 집계한다. (`LlmCallLog.java`)
+
+| 컬럼 | 타입 | Null | 설명 |
+|------|------|:----:|------|
+| `id` | BIGSERIAL | PK | |
+| `call_type` | VARCHAR(30) | N | EXPLANATION \| CHAT \| TREND_SUMMARY \| EMBEDDING |
+| `model` | VARCHAR(100) | Y | 제공자 메타데이터의 모델명 |
+| `input_tokens` / `output_tokens` | INT | Y | usage 메타데이터 없으면(스트리밍) NULL — 비용 집계는 있는 값만 합산 |
+| `latency_ms` | INT | N | |
+| `cache_hit` | BOOLEAN | N | EXPLANATION 캐시 히트는 LLM 미호출 행으로 기록 |
+| `error_message` | TEXT | Y | NULL = 성공 |
+| `created_at` | TIMESTAMPTZ | N | 인덱스 `(created_at DESC)` |
+
+계측은 `LlmCallRecorder`가 하며 **절대 예외를 던지지 않는다** — 계측 실패가 원 기능을 깨면 안 된다.
+
 ### 4.7 collection_log — 배치 실행 이력
 
 수집(SETLIST_SYNC)/예측(PREDICT)/임베딩(EMBED) 공용 이력. 진행 중 상태는 없고 **완료 시점에 1건 기록**하는 모델. (`CollectionLog.java`, V1 + V3)

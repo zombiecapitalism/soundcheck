@@ -303,6 +303,23 @@ POST /api/admin/batch/rag-ingest
 
 응답: **202** `{ "started": true }` / 실행 중이면 **409**. (수집 배치와 별도 락)
 
+### API-14a AI 사용량 대시보드 (E9)
+
+```
+GET /api/admin/ai-dashboard
+```
+
+오늘(KST 자정 이후) 기준 LLM 사용량. 예상 비용은 설정 단가(`encore.llm.cost.*`) × 토큰.
+
+```json
+{ "totalCalls": 42, "cacheHitRate": 0.6190, "inputTokens": 15000, "outputTokens": 4200,
+  "embeddingTokens": 8000, "estimatedCostUsd": 0.0049,
+  "byType": [{ "callType": "EXPLANATION", "calls": 21, "avgLatencyMs": 2100,
+               "inputTokens": 0, "outputTokens": 0, "cacheHits": 13, "errors": 0 }] }
+```
+
+- 스트리밍 호출(EXPLANATION·CHAT)은 usage 메타데이터가 없어 토큰이 NULL로 기록될 수 있다 — 토큰 합계는 기록된 값만 합산한 하한치.
+
 ### API-15 배치 이력
 
 ```

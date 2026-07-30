@@ -1,9 +1,12 @@
 package com.encore.prediction;
 
+import com.encore.llm.LlmCallRecorder;
+import com.encore.llm.LlmCallType;
 import com.encore.prediction.TrendChanges.Changes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,13 +25,16 @@ public class TrendSummaryService implements TrendSummarizer {
     private final TargetEventRepository targetEventRepository;
     private final PredictionRepository predictionRepository;
     private final ChatClient chatClient;
+    private final LlmCallRecorder llmCallRecorder;
 
     public TrendSummaryService(TargetEventRepository targetEventRepository,
                                PredictionRepository predictionRepository,
-                               ChatClient.Builder chatClientBuilder) {
+                               ChatClient.Builder chatClientBuilder,
+                               LlmCallRecorder llmCallRecorder) {
         this.targetEventRepository = targetEventRepository;
         this.predictionRepository = predictionRepository;
         this.chatClient = chatClientBuilder.build();
+        this.llmCallRecorder = llmCallRecorder;
     }
 
     @Override
@@ -45,11 +51,22 @@ public class TrendSummaryService implements TrendSummarizer {
                 event.updateTrendSummary(null, null);
                 return;
             }
-            String summary = chatClient.prompt()
+            long start = System.currentTimeMillis();
+            ChatResponse response = chatClient.prompt()
                     .system(TrendSummaryPrompts.system())
                     .user(TrendSummaryPrompts.user(event.getArtist().getName(), changes))
                     .call()
-                    .content();
+                    .chatResponse();
+            // 동기 호출이라 usage 메타데이터가 있다 — 토큰까지 계측(E9)
+            llmCallRecorder.recordUsage(LlmCallType.TREND_SUMMARY,
+                    response != null && response.getMetadata() != null
+                            ? response.getMetadata().getModel() : null,
+                    response != null && response.getMetadata() != null
+                            ? response.getMetadata().getUsage() : null,
+                    System.currentTimeMillis() - start);
+            String summary = response != null && response.getResult() != null
+                    ? response.getResult().getOutput().getText()
+                    : null;
             if (summary == null || summary.isBlank()) {
                 log.warn("빈 변화 요약은 저장하지 않음: event={}", targetEventId);
                 return;

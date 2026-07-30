@@ -1,5 +1,7 @@
 package com.encore.rag;
 
+import com.encore.llm.LlmCallRecorder;
+import com.encore.llm.LlmCallType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -25,12 +27,15 @@ public class SongExplanationService {
     private final RagRetriever retriever;
     private final SongExplanationCache cache;
     private final ChatClient chatClient;
+    private final LlmCallRecorder llmCallRecorder;
 
     public SongExplanationService(RagRetriever retriever, SongExplanationCache cache,
-                                  ChatClient.Builder chatClientBuilder) {
+                                  ChatClient.Builder chatClientBuilder,
+                                  LlmCallRecorder llmCallRecorder) {
         this.retriever = retriever;
         this.cache = cache;
         this.chatClient = chatClientBuilder.build();
+        this.llmCallRecorder = llmCallRecorder;
     }
 
     /** 출처 표기용 — 항상 응답에 포함한다(CLAUDE.md 규칙 8). */
@@ -44,6 +49,7 @@ public class SongExplanationService {
     public Explanation explain(UUID artistMbid, String songKey, String songName, String artistName) {
         Optional<SongExplanationCache.Cached> cached = cache.find(artistMbid, songKey);
         if (cached.isPresent()) {
+            llmCallRecorder.recordCacheHit(LlmCallType.EXPLANATION);
             return new Explanation(cached.get().sources(), Flux.just(cached.get().content()));
         }
 
@@ -56,14 +62,22 @@ public class SongExplanationService {
 
         List<Source> sources = distinctSources(chunks);
         StringBuilder buffer = new StringBuilder();
+        long start = System.currentTimeMillis();
         Flux<String> tokens = chatClient.prompt()
                 .system(ExplanationPrompts.system())
                 .user(ExplanationPrompts.user(artistName, songName, chunks))
                 .stream()
                 .content()
                 .doOnNext(buffer::append)
+                // 스트리밍이라 usage 메타데이터가 없다 — 토큰 null로 지연·성공 여부만 계측(E9)
+                .doOnError(e -> llmCallRecorder.recordError(LlmCallType.EXPLANATION, null,
+                        System.currentTimeMillis() - start, e.getMessage()))
                 // 끝까지 생성된 것만 저장한다 — 중간에 끊긴 스트림은 캐시되지 않는다
-                .doOnComplete(() -> saveQuietly(artistMbid, songKey, sources, buffer.toString()));
+                .doOnComplete(() -> {
+                    llmCallRecorder.record(LlmCallType.EXPLANATION, null, null, null,
+                            System.currentTimeMillis() - start, false, null);
+                    saveQuietly(artistMbid, songKey, sources, buffer.toString());
+                });
         return new Explanation(sources, tokens);
     }
 

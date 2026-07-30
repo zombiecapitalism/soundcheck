@@ -97,6 +97,25 @@ export interface KoreaShow {
   alreadyRegistered: boolean
 }
 
+/** AI 사용량 대시보드(E9) — 오늘(KST) 기준. */
+export interface AiDashboard {
+  totalCalls: number
+  cacheHitRate: number
+  inputTokens: number
+  outputTokens: number
+  embeddingTokens: number
+  estimatedCostUsd: number
+  byType: {
+    callType: string
+    calls: number
+    avgLatencyMs: number | null
+    inputTokens: number
+    outputTokens: number
+    cacheHits: number
+    errors: number
+  }[]
+}
+
 export const adminApi = {
   logs: () => adminRequest<LogsResponse>('/api/admin/logs'),
   koreaShows: () => adminRequest<KoreaShow[]>('/api/admin/korea-shows'),
@@ -122,4 +141,5 @@ export const adminApi = {
   runPredict: () => adminRequest<BatchLogEntry[]>('/api/admin/batch/predict', { method: 'POST' }),
   startRagIngest: () =>
     adminRequest<{ started: boolean }>('/api/admin/batch/rag-ingest', { method: 'POST' }),
+  aiDashboard: () => adminRequest<AiDashboard>('/api/admin/ai-dashboard'),
 }

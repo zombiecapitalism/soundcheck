@@ -37,6 +37,11 @@ encore:
     sample-size: 20               # 집계 표본 - 최근 N회 공연
     recency-decay: 0.95           # 최신 가중치 감쇠(회차당 곱). 1.0이면 감쇠 없음
     matching-show-type-boost: 1.5 # expected_show_type과 같은 유형인 공연의 가중치 배수
+  llm:
+    cost:                         # 대시보드 예상 비용용 단가(USD/1M 토큰) — 모델 교체 시 함께 갱신
+      input-usd-per-1m: ${LLM_COST_INPUT:0.15}      # gpt-4o-mini 입력
+      output-usd-per-1m: ${LLM_COST_OUTPUT:0.60}    # gpt-4o-mini 출력
+      embedding-usd-per-1m: ${LLM_COST_EMBEDDING:0.02} # text-embedding-3-small
   rag:
     top-k: 5                      # 유사도 검색 상위 청크 수 (PRD 8장)
     min-score: 0.35               # 코사인 유사도 하한 — 미만이면 근거로 안 쓴다 ("정보 없음")

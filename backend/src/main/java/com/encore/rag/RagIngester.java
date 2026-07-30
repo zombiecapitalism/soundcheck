@@ -10,7 +10,10 @@ import com.encore.rag.client.WikipediaClient;
 import com.encore.rag.client.WikipediaPage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.encore.llm.LlmCallRecorder;
+import com.encore.llm.LlmCallType;
 import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.embedding.EmbeddingResponse;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 
@@ -45,12 +48,14 @@ public class RagIngester {
     private final CollectionLogRepository collectionLogRepository;
     private final JdbcClient jdbcClient;
     private final RagProperties properties;
+    private final LlmCallRecorder llmCallRecorder;
 
     public RagIngester(ArtistRepository artistRepository, WikipediaClient wikipediaClient,
                        EmbeddingModel embeddingModel, RagDocumentRepository documentRepository,
                        RagStore ragStore, SongExplanationCache explanationCache,
                        CollectionLogRepository collectionLogRepository,
-                       JdbcClient jdbcClient, RagProperties properties) {
+                       JdbcClient jdbcClient, RagProperties properties,
+                       LlmCallRecorder llmCallRecorder) {
         this.artistRepository = artistRepository;
         this.wikipediaClient = wikipediaClient;
         this.embeddingModel = embeddingModel;
@@ -60,6 +65,7 @@ public class RagIngester {
         this.collectionLogRepository = collectionLogRepository;
         this.jdbcClient = jdbcClient;
         this.properties = properties;
+        this.llmCallRecorder = llmCallRecorder;
     }
 
     /** 대상 아티스트 전체 수집. 아티스트별로 실행 이력(EMBED)을 남긴다. */
@@ -143,8 +149,17 @@ public class RagIngester {
         if (chunks.isEmpty()) {
             return UnitResult.SKIPPED;
         }
-        List<float[]> embeddings = embeddingModel.embed(
+        // embedForResponse: 임베딩과 함께 usage 메타데이터를 받아 토큰을 계측한다(E9)
+        long embedStart = System.currentTimeMillis();
+        EmbeddingResponse embeddingResponse = embeddingModel.embedForResponse(
                 chunks.stream().map(RagChunker.Chunk::content).toList());
+        llmCallRecorder.recordUsage(LlmCallType.EMBEDDING,
+                embeddingResponse.getMetadata() != null ? embeddingResponse.getMetadata().getModel() : null,
+                embeddingResponse.getMetadata() != null ? embeddingResponse.getMetadata().getUsage() : null,
+                System.currentTimeMillis() - embedStart);
+        List<float[]> embeddings = embeddingResponse.getResults().stream()
+                .map(embedding -> embedding.getOutput())
+                .toList();
 
         ragStore.save(RagDocument.builder()
                         .artistMbid(artist.getMbid())

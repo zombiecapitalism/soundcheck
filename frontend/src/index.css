@@ -1146,3 +1146,32 @@ select:focus {
   color: var(--accent);
   margin-right: 4px;
 }
+
+/* AI 사용량 카드 (E9) */
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}

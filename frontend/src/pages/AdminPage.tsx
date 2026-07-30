@@ -112,6 +112,7 @@ function AdminConsole({ onAuthExpired }: { onAuthExpired: () => void }) {
         ragIngesting={logsQuery.data?.ragIngesting ?? false}
         onDone={invalidate}
       />
+      <AiDashboardSection />
       <KoreaShowSection onRegistered={invalidate} />
       <ArtistSection onRegistered={invalidate} />
       <EventSection onCreated={invalidate} />
@@ -173,6 +174,79 @@ function BatchSection({
         <p className="form-hint">RAG 수집 시작 — 결과는 아래 이력(EMBED)에서 확인</p>
       )}
       {ragIngest.error && <p className="form-error">{ragIngest.error.message}</p>}
+    </section>
+  )
+}
+
+/** AI 사용량(E9) — 오늘(KST) 호출·캐시·토큰·예상 비용. 숫자 카드 위주, 차트 없음. */
+function AiDashboardSection() {
+  const dashboard = useQuery({
+    queryKey: ['admin', 'ai-dashboard'],
+    queryFn: adminApi.aiDashboard,
+    refetchInterval: 30000,
+  })
+  const data = dashboard.data
+
+  return (
+    <section className="admin-section">
+      <h2>AI 사용량 (오늘)</h2>
+      {dashboard.isPending && <p className="form-hint">불러오는 중…</p>}
+      {dashboard.error && <p className="form-error">{dashboard.error.message}</p>}
+      {data && (
+        <>
+          <div className="stat-cards">
+            <div className="stat-card">
+              <span className="stat-value">{data.totalCalls}</span>
+              <span className="stat-label">호출</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-value">{Math.round(data.cacheHitRate * 100)}%</span>
+              <span className="stat-label">캐시 히트</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-value">
+                {(data.inputTokens + data.outputTokens + data.embeddingTokens).toLocaleString()}
+              </span>
+              <span className="stat-label">토큰</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-value">${data.estimatedCostUsd.toFixed(4)}</span>
+              <span className="stat-label">예상 비용</span>
+            </div>
+          </div>
+          {data.byType.length > 0 && (
+            <div className="log-table-wrap">
+              <table className="log-table">
+                <thead>
+                  <tr>
+                    <th>용도</th>
+                    <th>호출</th>
+                    <th>평균 지연</th>
+                    <th>토큰(입/출)</th>
+                    <th>캐시</th>
+                    <th>오류</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.byType.map((row) => (
+                    <tr key={row.callType}>
+                      <td>{row.callType}</td>
+                      <td>{row.calls}</td>
+                      <td>{row.avgLatencyMs != null ? `${row.avgLatencyMs}ms` : '—'}</td>
+                      <td>
+                        {row.inputTokens.toLocaleString()}/{row.outputTokens.toLocaleString()}
+                      </td>
+                      <td>{row.cacheHits}</td>
+                      <td>{row.errors}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {data.totalCalls === 0 && <p className="form-hint">오늘은 아직 LLM 호출이 없어요.</p>}
+        </>
+      )}
     </section>
   )
 }
