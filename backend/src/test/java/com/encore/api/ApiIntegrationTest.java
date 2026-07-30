@@ -142,6 +142,53 @@ class ApiIntegrationTest {
                 .andExpect(content().json("[]"));
     }
 
+    /** 곡 상세 — 예측 근거와 함께 최근 공연 타임라인(연주/미연주 모두)을 준다. */
+    @Test
+    void predictionDetailIncludesPlayHistoryTimeline() throws Exception {
+        TargetEvent event = persistEvent("타임라인 이벤트", LocalDate.of(2026, 10, 2));
+        predictionRepository.saveAndFlush(Prediction.builder()
+                .targetEvent(event).songKey("holy wars").songName("Holy Wars")
+                .probability(new BigDecimal("0.5000")).rank((short) 1)
+                .playedCount((short) 1).sampleSize((short) 2)
+                .build());
+        // 최근 2회: 최신 공연에는 없음(미연주), 이전 공연에는 3번째 곡으로 연주
+        persistShow("tl-miss", LocalDate.of(2026, 7, 20), ShowType.UNKNOWN, 0);
+        Show missShow = entityManager.find(Show.class, "tl-miss");
+        missShow.replaceSongs(List.of(
+                ShowSong.builder().setIndex((short) 0).positionInSet((short) 1).positionTotal((short) 1)
+                        .songName("Other Song").songKey("other song").build()));
+        persistShow("tl-hit", LocalDate.of(2026, 7, 10), ShowType.FESTIVAL, 0);
+        Show hitShow = entityManager.find(Show.class, "tl-hit");
+        hitShow.replaceSongs(List.of(
+                ShowSong.builder().setIndex((short) 0).positionInSet((short) 1).positionTotal((short) 1)
+                        .songName("Opener").songKey("opener").build(),
+                ShowSong.builder().setIndex((short) 0).positionInSet((short) 2).positionTotal((short) 2)
+                        .songName("Second").songKey("second").build(),
+                ShowSong.builder().setIndex((short) 1).encore(true).positionInSet((short) 1)
+                        .positionTotal((short) 3).songName("Holy Wars").songKey("holy wars").build()));
+        entityManager.flush();
+
+        mockMvc.perform(get("/api/events/{id}/predictions/{songKey}", event.getId(), "holy wars"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.prediction.songName").value("Holy Wars"))
+                .andExpect(jsonPath("$.prediction.sampleSize").value(2))
+                .andExpect(jsonPath("$.history.length()").value(2))
+                // 최근순: 미연주 공연이 먼저
+                .andExpect(jsonPath("$.history[0].setlistId").value("tl-miss"))
+                .andExpect(jsonPath("$.history[0].played").value(false))
+                .andExpect(jsonPath("$.history[0].position").value(nullValue()))
+                .andExpect(jsonPath("$.history[1].setlistId").value("tl-hit"))
+                .andExpect(jsonPath("$.history[1].played").value(true))
+                .andExpect(jsonPath("$.history[1].position").value(3))
+                .andExpect(jsonPath("$.history[1].encore").value(true))
+                .andExpect(jsonPath("$.history[1].playedSongCount").value(3))
+                .andExpect(jsonPath("$.history[1].showType").value("FESTIVAL"));
+
+        mockMvc.perform(get("/api/events/{id}/predictions/{songKey}", event.getId(), "no such song"))
+                .andExpect(status().isNotFound())
+                .andExpect(header().string("Content-Type", containsString("application/problem+json")));
+    }
+
     /** 공연 후: 실제 셋리스트가 연결된 이벤트는 verified=true + 적중률 조회가 가능해야 한다. */
     @Test
     void verifiedEventExposesAccuracyReport() throws Exception {

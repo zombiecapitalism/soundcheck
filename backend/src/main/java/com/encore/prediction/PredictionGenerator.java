@@ -44,11 +44,10 @@ public class PredictionGenerator {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 예측 대상: " + targetEventId));
 
         // 곡 0건 공연은 집계 제외 대상이므로(docs 1.4) limit 전에 걸러서
-        // 표본이 "집계 가능한 최근 N회"로 채워지게 한다
-        List<Show> sample = showRepository.findAllByArtistMbidWithSongs(event.getArtist().getMbid()).stream()
-                .filter(show -> !show.playedSongs().isEmpty())
-                .limit(properties.sampleSize())
-                .toList();
+        // 표본이 "집계 가능한 최근 N회"로 채워지게 한다 — 곡 타임라인과 공유하는 규칙
+        List<Show> sample = PredictionSampling.sample(
+                showRepository.findAllByArtistMbidWithSongs(event.getArtist().getMbid()),
+                properties.sampleSize());
         if (sample.isEmpty()) {
             throw new IllegalStateException("집계할 공연이 없습니다: " + event.getEventName());
         }

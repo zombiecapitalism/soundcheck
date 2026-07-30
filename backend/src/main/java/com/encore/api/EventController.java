@@ -1,9 +1,12 @@
 package com.encore.api;
 
 import com.encore.prediction.AccuracyCalculator;
+import com.encore.prediction.Prediction;
 import com.encore.prediction.PredictionRepository;
+import com.encore.prediction.PredictionSampling;
 import com.encore.prediction.TargetEvent;
 import com.encore.prediction.TargetEventRepository;
+import com.encore.setlist.ShowRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,11 +20,14 @@ public class EventController {
 
     private final TargetEventRepository targetEventRepository;
     private final PredictionRepository predictionRepository;
+    private final ShowRepository showRepository;
 
     public EventController(TargetEventRepository targetEventRepository,
-                           PredictionRepository predictionRepository) {
+                           PredictionRepository predictionRepository,
+                           ShowRepository showRepository) {
         this.targetEventRepository = targetEventRepository;
         this.predictionRepository = predictionRepository;
+        this.showRepository = showRepository;
     }
 
     /** 예측 대상 이벤트 목록 — 공연일 오름차순. */
@@ -45,6 +51,23 @@ public class EventController {
         return predictionRepository.findByTargetEvent_IdOrderByRankAsc(id).stream()
                 .map(PredictionResponse::from)
                 .toList();
+    }
+
+    /**
+     * 곡 하나의 예측 상세 — 근거 수치 + 최근 공연 타임라인(연주/미연주 포함).
+     * 표본 선정은 예측 계산과 같은 규칙(PredictionSampling)이라 "최근 N회 중 k회"와
+     * 타임라인이 어긋나지 않는다. songKey는 URL 인코딩된 정규화 키.
+     */
+    @GetMapping("/{id}/predictions/{songKey}")
+    public PredictionDetailResponse predictionDetail(@PathVariable Long id, @PathVariable String songKey) {
+        TargetEvent event = targetEventRepository.findById(id)
+                .orElseThrow(() -> new ApiNotFoundException("존재하지 않는 이벤트입니다: " + id));
+        Prediction prediction = predictionRepository.findByTargetEvent_IdAndSongKey(id, songKey)
+                .orElseThrow(() -> new ApiNotFoundException("예측에 없는 곡입니다: " + songKey));
+        // 아티스트 접근은 식별자뿐이라 지연 초기화가 없고, 곡 목록은 fetch join으로 로드된다
+        return PredictionDetailResponse.from(prediction, PredictionSampling.sample(
+                showRepository.findAllByArtistMbidWithSongs(event.getArtist().getMbid()),
+                prediction.getSampleSize()));
     }
 
     /**

@@ -6,12 +6,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface PredictionRepository extends JpaRepository<Prediction, Long> {
 
     List<Prediction> findByTargetEvent_IdOrderByRankAsc(Long targetEventId);
 
     boolean existsByTargetEvent_Id(Long targetEventId);
+
+    Optional<Prediction> findByTargetEvent_IdAndSongKey(Long targetEventId, String songKey);
 
     /**
      * 재계산은 전체 교체다. 파생 deleteBy는 엔티티를 로드해 flush 시점에 지우는데,
