@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router'
 import { useAccuracy, useArtist, useEvent, usePredictions } from '../api/queries'
 import ProbabilityBar from '../components/ProbabilityBar'
 import StatusView from '../components/StatusView'
+import { usePracticeChecklist } from '../hooks/usePracticeChecklist'
+import { practiceProgress } from '../lib/practice'
 import {
   buildExpectedSetlist,
   evidenceText,
@@ -27,6 +29,9 @@ export default function PredictionsPage() {
   const setSize = expectedSetSize(artist?.recentShows.avgSongCount, predictions ?? [])
   const displayed =
     view === 'timeline' && predictions ? buildExpectedSetlist(predictions, setSize) : predictions
+  // 예습 체크 — 기기 로컬 상태(localStorage)
+  const { checkedKeys, toggle } = usePracticeChecklist(eventId)
+  const progress = practiceProgress(predictions ?? [], checkedKeys, setSize)
 
   // id가 숫자가 아니면 쿼리가 시작되지 않아 isPending이 영원히 true다 — 로딩으로 위장되면 안 된다
   if (!Number.isFinite(eventId)) {
@@ -113,15 +118,29 @@ export default function PredictionsPage() {
               확률 상위 {setSize}곡을 평균 등장 위치순으로 배열 — 처음 곡부터 순서대로 예습하는 뷰
             </p>
           )}
+          {progress.total > 0 && (
+            <div className="practice-progress">
+              <span className="practice-progress-text">
+                예습 {progress.done}/{progress.total}곡
+              </span>
+              <div className="practice-progress-track" aria-hidden="true">
+                <div
+                  className="practice-progress-fill"
+                  style={{ width: `${(progress.done / progress.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
           <ol className="prediction-list">
             {(displayed ?? []).map((prediction, index) => {
               const position = positionText(prediction.avgPosition)
               const played = playedByKey.get(prediction.songKey)
+              const practiced = checkedKeys.has(prediction.songKey)
               return (
                 <li key={prediction.songKey}>
                   <Link
                     to={`/events/${eventId}/songs/${encodeURIComponent(prediction.songKey)}`}
-                    className="prediction-item"
+                    className={practiced ? 'prediction-item practiced' : 'prediction-item'}
                   >
                     <div className="prediction-row">
                       <span className="prediction-rank">
@@ -135,6 +154,20 @@ export default function PredictionsPage() {
                       <span className="prediction-percent">
                         {formatPercent(prediction.probability)}
                       </span>
+                      <button
+                        type="button"
+                        className={practiced ? 'practice-check checked' : 'practice-check'}
+                        aria-label={practiced ? '예습 완료 해제' : '예습 완료 표시'}
+                        aria-pressed={practiced}
+                        onClick={(e) => {
+                          // 행 전체가 곡 상세 링크라, 체크는 내비게이션을 막고 토글만 한다
+                          e.preventDefault()
+                          e.stopPropagation()
+                          toggle(prediction.songKey)
+                        }}
+                      >
+                        ✓
+                      </button>
                     </div>
                     {view === 'probability' && <ProbabilityBar probability={prediction.probability} />}
                     <p className="prediction-evidence">

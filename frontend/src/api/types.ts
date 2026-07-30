@@ -78,6 +78,19 @@ export interface AccuracyReport {
   }[]
 }
 
+/** 적중률 아카이브 항목 — 검증된 지난 공연의 예측 성적. */
+export interface AccuracySummary {
+  eventId: number
+  eventName: string
+  eventDate: string
+  artistMbid: string
+  artistName: string
+  actualSongCount: number
+  topK: number
+  topKHits: number
+  precisionAtK: number
+}
+
 /** RFC 7807 Problem Detail — 에러 응답 공통 형식. */
 export interface ProblemDetail {
   status: number

@@ -11,6 +11,7 @@ import {
   songRoleLabels,
 } from './format'
 import { listenLinks } from './links'
+import { practiceProgress, toggleKey } from './practice'
 
 describe('formatPercent', () => {
   it('반올림해서 정수 퍼센트로 표기한다', () => {
@@ -140,6 +141,28 @@ describe('buildExpectedSetlist', () => {
     const byRank = [prediction(1, 0.9, 9), prediction(2, 0.8, 1)]
     buildExpectedSetlist(byRank, 2)
     expect(byRank.map((p) => p.rank)).toEqual([1, 2])
+  })
+})
+
+describe('toggleKey', () => {
+  it('없으면 넣고 있으면 뺀다 — 원본은 불변', () => {
+    const original = ['a']
+    expect(toggleKey(original, 'b')).toEqual(['a', 'b'])
+    expect(toggleKey(['a', 'b'], 'a')).toEqual(['b'])
+    expect(original).toEqual(['a'])
+  })
+})
+
+describe('practiceProgress', () => {
+  const predictions = [{ songKey: 'a' }, { songKey: 'b' }, { songKey: 'c' }]
+
+  it('예상 셋 규모(rank 상위 N곡) 기준으로 센다', () => {
+    // c는 상위 2곡 밖 — 체크돼 있어도 분자에 안 들어간다
+    expect(practiceProgress(predictions, new Set(['a', 'c']), 2)).toEqual({ done: 1, total: 2 })
+  })
+
+  it('규모가 예측 수보다 크면 예측 수가 분모다', () => {
+    expect(practiceProgress(predictions, new Set(['a']), 10)).toEqual({ done: 1, total: 3 })
   })
 })
 

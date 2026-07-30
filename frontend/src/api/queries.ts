@@ -49,3 +49,8 @@ export function usePredictionDetail(eventId: number, songKey: string) {
     enabled: Number.isFinite(eventId) && songKey.length > 0,
   })
 }
+
+/** 적중률 아카이브 — 지난 공연들의 예측 성적. */
+export function useAccuracyArchive() {
+  return useQuery({ queryKey: ['accuracy-archive'], queryFn: api.accuracyArchive })
+}
