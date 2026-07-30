@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router'
 import { useEvent, usePredictionDetail } from '../api/queries'
 import StatusView from '../components/StatusView'
+import { useSongStory } from '../hooks/useSongStory'
 import {
   evidenceText,
   formatEventDate,
@@ -136,14 +137,56 @@ export default function SongPage() {
         </ol>
       </section>
 
-      <section className="song-story-placeholder">
-        <h2>곡 이야기</h2>
-        <p>
-          곡의 의미, 앨범 맥락, 라이브에서의 특징을 준비하고 있어요.
-          <br />
-          배경 설명이 연결되면 여기에 출처와 함께 표시됩니다.
-        </p>
-      </section>
+      <SongStorySection
+        artistMbid={event?.artist.mbid}
+        songKey={songKey}
+        songName={prediction.songName}
+      />
     </>
+  )
+}
+
+/** RAG 곡 이야기 — SSE로 점진 표시. 출처가 항상 함께 나온다(없으면 "자료 없음" 상태). */
+function SongStorySection({
+  artistMbid,
+  songKey,
+  songName,
+}: {
+  artistMbid: string | undefined
+  songKey: string
+  songName: string
+}) {
+  const story = useSongStory(artistMbid, songKey, songName)
+  // 근거가 부족하면 서버(프롬프트 계약)가 정확히 "정보 없음"을 보낸다
+  const noInfo = story.status === 'done' && story.text.trim() === '정보 없음'
+
+  return (
+    <section className="song-story">
+      <h2>곡 이야기</h2>
+      {story.status === 'streaming' && story.text === '' && (
+        <p className="story-pending">배경 설명을 생성하는 중…</p>
+      )}
+      {noInfo ? (
+        <p className="story-empty">아직 이 곡에 대해 수집된 배경 자료가 없어요.</p>
+      ) : (
+        story.text !== '' && (
+          <p className="story-text">
+            {story.text}
+            {story.status === 'streaming' && <span className="story-cursor" aria-hidden="true" />}
+          </p>
+        )
+      )}
+      {story.status === 'error' && <p className="story-error">{story.errorMessage}</p>}
+      {story.sources.length > 0 && !noInfo && (
+        <p className="story-sources">
+          출처:{' '}
+          {story.sources.map((source) => (
+            <a key={source.url} href={source.url} target="_blank" rel="noreferrer">
+              {source.title} ({source.name}) ↗
+            </a>
+          ))}
+        </p>
+      )}
+    </section>
   )
 }

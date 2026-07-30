@@ -91,6 +91,13 @@ export interface AccuracySummary {
   precisionAtK: number
 }
 
+/** 곡 배경 설명의 출처 — RAG 응답에 항상 함께 온다. */
+export interface ExplanationSource {
+  name: string
+  url: string
+  title: string
+}
+
 /** RFC 7807 Problem Detail — 에러 응답 공통 형식. */
 export interface ProblemDetail {
   status: number

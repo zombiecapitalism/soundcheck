@@ -107,7 +107,11 @@ function AdminConsole({ onAuthExpired }: { onAuthExpired: () => void }) {
           로그아웃
         </button>
       </div>
-      <BatchSection collecting={logsQuery.data?.collecting ?? false} onDone={invalidate} />
+      <BatchSection
+        collecting={logsQuery.data?.collecting ?? false}
+        ragIngesting={logsQuery.data?.ragIngesting ?? false}
+        onDone={invalidate}
+      />
       <KoreaShowSection onRegistered={invalidate} />
       <ArtistSection onRegistered={invalidate} />
       <EventSection onCreated={invalidate} />
@@ -120,9 +124,18 @@ function AdminConsole({ onAuthExpired }: { onAuthExpired: () => void }) {
   )
 }
 
-function BatchSection({ collecting, onDone }: { collecting: boolean; onDone: () => void }) {
+function BatchSection({
+  collecting,
+  ragIngesting,
+  onDone,
+}: {
+  collecting: boolean
+  ragIngesting: boolean
+  onDone: () => void
+}) {
   const collect = useMutation({ mutationFn: adminApi.startCollect, onSettled: onDone })
   const predict = useMutation({ mutationFn: adminApi.runPredict, onSettled: onDone })
+  const ragIngest = useMutation({ mutationFn: adminApi.startRagIngest, onSettled: onDone })
 
   return (
     <section className="admin-section">
@@ -144,10 +157,22 @@ function BatchSection({ collecting, onDone }: { collecting: boolean; onDone: () 
         >
           {predict.isPending ? '예측 계산 중…' : '예측 재계산'}
         </button>
+        <button
+          type="button"
+          className="primary-button"
+          disabled={ragIngesting || ragIngest.isPending}
+          onClick={() => ragIngest.mutate()}
+        >
+          {ragIngesting ? 'RAG 수집 진행 중…' : 'RAG 문서 수집'}
+        </button>
       </div>
       {collect.error && <p className="form-error">{collect.error.message}</p>}
       {predict.isSuccess && <p className="form-hint">예측 완료 — 이벤트 {predict.data.length}건 처리</p>}
       {predict.error && <p className="form-error">{predict.error.message}</p>}
+      {ragIngest.isSuccess && (
+        <p className="form-hint">RAG 수집 시작 — 결과는 아래 이력(EMBED)에서 확인</p>
+      )}
+      {ragIngest.error && <p className="form-error">{ragIngest.error.message}</p>}
     </section>
   )
 }

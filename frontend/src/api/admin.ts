@@ -73,6 +73,7 @@ export interface BatchLogEntry {
 
 export interface LogsResponse {
   collecting: boolean
+  ragIngesting: boolean
   logs: BatchLogEntry[]
 }
 
@@ -119,4 +120,6 @@ export const adminApi = {
     }),
   startCollect: () => adminRequest<{ started: boolean }>('/api/admin/batch/collect', { method: 'POST' }),
   runPredict: () => adminRequest<BatchLogEntry[]>('/api/admin/batch/predict', { method: 'POST' }),
+  startRagIngest: () =>
+    adminRequest<{ started: boolean }>('/api/admin/batch/rag-ingest', { method: 'POST' }),
 }
