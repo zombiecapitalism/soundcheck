@@ -257,6 +257,36 @@ class ApiIntegrationTest {
                 .andExpect(jsonPath("$.surprises[0].songName").value("Symphony of Destruction"));
     }
 
+    /** 적중률 아카이브 — 검증된 이벤트만, 최근 공연부터, 스냅샷 없는 이벤트는 제외. */
+    @Test
+    void accuracyArchiveListsVerifiedEventsOnly() throws Exception {
+        // 검증 + 스냅샷 있음 → 포함
+        TargetEvent graded = persistEvent("채점된 공연", LocalDate.of(2026, 7, 1));
+        predictionRepository.saveAndFlush(Prediction.builder()
+                .targetEvent(graded).songKey("holy wars").songName("Holy Wars")
+                .probability(new BigDecimal("0.9000")).rank((short) 1)
+                .playedCount((short) 18).sampleSize((short) 20)
+                .build());
+        persistShow("arc-s1", LocalDate.of(2026, 7, 1), ShowType.FESTIVAL, 0);
+        Show actual = entityManager.find(Show.class, "arc-s1");
+        actual.replaceSongs(List.of(
+                ShowSong.builder().setIndex((short) 0).positionInSet((short) 1).positionTotal((short) 1)
+                        .songName("Holy Wars").songKey("holy wars").build()));
+        graded.recordActualSetlist(actual);
+        // 미검증(미래) → 제외
+        persistEvent("미래 공연", LocalDate.of(2026, 10, 2));
+        entityManager.flush();
+
+        mockMvc.perform(get("/api/events/accuracy"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].eventName").value("채점된 공연"))
+                .andExpect(jsonPath("$[0].artistName").value("Megadeth"))
+                .andExpect(jsonPath("$[0].topK").value(1))
+                .andExpect(jsonPath("$[0].topKHits").value(1))
+                .andExpect(jsonPath("$[0].precisionAtK").value(closeTo(1.0, 1e-9)));
+    }
+
     /** 아직 실제 셋리스트가 연결되지 않은 이벤트의 적중률 조회는 404 Problem이다. */
     @Test
     void accuracyIsNotFoundBeforeVerification() throws Exception {

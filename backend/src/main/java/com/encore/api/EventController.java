@@ -55,6 +55,25 @@ public class EventController {
     }
 
     /**
+     * 적중률 아카이브 — 검증된 지난 공연들의 성적 목록(최근 공연부터).
+     * 예측 스냅샷이 없는 이벤트(수동 연결 등 예외 상태)는 채점할 수 없어 제외한다.
+     */
+    @GetMapping("/accuracy")
+    public List<AccuracySummaryResponse> accuracyArchive() {
+        return targetEventRepository.findAllVerifiedWithActualSongs().stream()
+                .map(event -> {
+                    List<Prediction> predictions =
+                            predictionRepository.findByTargetEvent_IdOrderByRankAsc(event.getId());
+                    return predictions.isEmpty()
+                            ? null
+                            : AccuracySummaryResponse.from(event,
+                                    AccuracyCalculator.evaluate(predictions, event.getActualSetlist()));
+                })
+                .filter(summary -> summary != null)
+                .toList();
+    }
+
+    /**
      * 곡 하나의 예측 상세 — 근거 수치 + 최근 공연 타임라인(연주/미연주 포함).
      * 표본 선정은 예측 계산과 같은 규칙(PredictionSampling)이라 "최근 N회 중 k회"와
      * 타임라인이 어긋나지 않는다. songKey는 URL 인코딩된 정규화 키.

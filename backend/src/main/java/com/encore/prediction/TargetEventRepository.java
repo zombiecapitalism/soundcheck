@@ -36,4 +36,14 @@ public interface TargetEventRepository extends JpaRepository<TargetEvent, Long> 
             where e.id = :id
             """)
     Optional<TargetEvent> findVerifiedWithActualSongs(@Param("id") Long id);
+
+    /** 적중률 아카이브 — 검증된(실제 셋리스트 연결) 이벤트 전체, 최근 공연부터. */
+    @Query("""
+            select e from TargetEvent e
+            join fetch e.artist
+            join fetch e.actualSetlist actual
+            left join fetch actual.songs
+            order by e.eventDate desc, e.id desc
+            """)
+    List<TargetEvent> findAllVerifiedWithActualSongs();
 }
