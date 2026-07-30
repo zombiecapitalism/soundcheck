@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router'
-import { usePredictionDetail } from '../api/queries'
+import { useEvent, usePredictionDetail } from '../api/queries'
 import StatusView from '../components/StatusView'
 import {
   evidenceText,
@@ -8,6 +8,7 @@ import {
   positionText,
   songRoleLabels,
 } from '../lib/format'
+import { listenLinks } from '../lib/links'
 
 /** 곡 상세 — 예측 근거를 최근 공연 타임라인으로 풀어 보여준다. RAG(F4)는 아래 플레이스홀더에 연결 예정. */
 export default function SongPage() {
@@ -16,6 +17,7 @@ export default function SongPage() {
   // react-router가 params를 이미 디코드해서 준다
   const songKey = params.songKey ?? ''
   const { data, isPending, isError, error, refetch } = usePredictionDetail(eventId, songKey)
+  const { data: event } = useEvent(eventId) // 듣기 링크의 아티스트명 (목록 캐시 공유)
 
   // id가 숫자가 아니면 쿼리가 시작되지 않아 isPending이 영원히 true다
   if (!Number.isFinite(eventId)) {
@@ -68,6 +70,21 @@ export default function SongPage() {
               </span>
             ))}
           </p>
+        )}
+        {event && (
+          <div className="listen-links">
+            {listenLinks(event.artist.name, prediction.songName).map((link) => (
+              <a
+                key={link.label}
+                className="listen-button"
+                href={link.url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {link.label} ↗
+              </a>
+            ))}
+          </div>
         )}
       </header>
 

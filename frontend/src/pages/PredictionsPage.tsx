@@ -1,9 +1,12 @@
+import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useAccuracy, useArtist, useEvent, usePredictions } from '../api/queries'
 import ProbabilityBar from '../components/ProbabilityBar'
 import StatusView from '../components/StatusView'
 import {
+  buildExpectedSetlist,
   evidenceText,
+  expectedSetSize,
   formatEventDate,
   formatPercent,
   isEncoreStaple,
@@ -19,6 +22,11 @@ export default function PredictionsPage() {
   const { data: predictions, isPending, isError, error, refetch } = usePredictions(eventId)
   const { data: accuracy } = useAccuracy(eventId, event?.verified ?? false)
   const playedByKey = new Map(accuracy?.results.map((r) => [r.songKey, r.played]) ?? [])
+  // 보기 전환: 확률순(기본) vs 예상 순서(처음 곡부터 순서대로 예습하는 뷰)
+  const [view, setView] = useState<'probability' | 'timeline'>('probability')
+  const setSize = expectedSetSize(artist?.recentShows.avgSongCount, predictions ?? [])
+  const displayed =
+    view === 'timeline' && predictions ? buildExpectedSetlist(predictions, setSize) : predictions
 
   // id가 숫자가 아니면 쿼리가 시작되지 않아 isPending이 영원히 true다 — 로딩으로 위장되면 안 된다
   if (!Number.isFinite(eventId)) {
@@ -83,40 +91,65 @@ export default function PredictionsPage() {
       )}
 
       {predictions && predictions.length > 0 && (
-        <ol className="prediction-list">
-          {predictions.map((prediction) => {
-            const position = positionText(prediction.avgPosition)
-            const played = playedByKey.get(prediction.songKey)
-            return (
-              <li key={prediction.songKey}>
-                <Link
-                  to={`/events/${eventId}/songs/${encodeURIComponent(prediction.songKey)}`}
-                  className="prediction-item"
-                >
-                  <div className="prediction-row">
-                    <span className="prediction-rank">{prediction.rank}</span>
-                    <span className="prediction-song">
-                      {prediction.songName}
-                      {played === true && <span className="hit-badge">적중</span>}
-                      {played === false && <span className="miss-badge">미연주</span>}
-                    </span>
-                    <span className="prediction-percent">
-                      {formatPercent(prediction.probability)}
-                    </span>
-                  </div>
-                  <ProbabilityBar probability={prediction.probability} />
-                  <p className="prediction-evidence">
-                    {evidenceText(prediction.playedCount, prediction.sampleSize)}
-                    {position && <> · {position}</>}
-                    {isEncoreStaple(prediction.encoreRatio) && (
-                      <span className="encore-badge">앙코르 단골</span>
-                    )}
-                  </p>
-                </Link>
-              </li>
-            )
-          })}
-        </ol>
+        <>
+          <div className="view-toggle" role="group" aria-label="보기 방식">
+            <button
+              type="button"
+              className={view === 'probability' ? 'toggle-button active' : 'toggle-button'}
+              onClick={() => setView('probability')}
+            >
+              확률순
+            </button>
+            <button
+              type="button"
+              className={view === 'timeline' ? 'toggle-button active' : 'toggle-button'}
+              onClick={() => setView('timeline')}
+            >
+              예상 순서
+            </button>
+          </div>
+          {view === 'timeline' && (
+            <p className="view-hint">
+              확률 상위 {setSize}곡을 평균 등장 위치순으로 배열 — 처음 곡부터 순서대로 예습하는 뷰
+            </p>
+          )}
+          <ol className="prediction-list">
+            {(displayed ?? []).map((prediction, index) => {
+              const position = positionText(prediction.avgPosition)
+              const played = playedByKey.get(prediction.songKey)
+              return (
+                <li key={prediction.songKey}>
+                  <Link
+                    to={`/events/${eventId}/songs/${encodeURIComponent(prediction.songKey)}`}
+                    className="prediction-item"
+                  >
+                    <div className="prediction-row">
+                      <span className="prediction-rank">
+                        {view === 'timeline' ? index + 1 : prediction.rank}
+                      </span>
+                      <span className="prediction-song">
+                        {prediction.songName}
+                        {played === true && <span className="hit-badge">적중</span>}
+                        {played === false && <span className="miss-badge">미연주</span>}
+                      </span>
+                      <span className="prediction-percent">
+                        {formatPercent(prediction.probability)}
+                      </span>
+                    </div>
+                    {view === 'probability' && <ProbabilityBar probability={prediction.probability} />}
+                    <p className="prediction-evidence">
+                      {evidenceText(prediction.playedCount, prediction.sampleSize)}
+                      {position && <> · {position}</>}
+                      {isEncoreStaple(prediction.encoreRatio) && (
+                        <span className="encore-badge">앙코르 단골</span>
+                      )}
+                    </p>
+                  </Link>
+                </li>
+              )
+            })}
+          </ol>
+        </>
       )}
     </>
   )

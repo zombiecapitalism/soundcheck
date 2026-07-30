@@ -62,6 +62,38 @@ export function songRoleLabels(input: {
   return labels
 }
 
+/**
+ * 예상 셋 규모 — 아티스트의 최근 공연 평균 곡 수를 우선 쓰고,
+ * 통계가 없으면 확률 50% 이상인 곡 수(그마저 없으면 20)로 잡는다.
+ */
+export function expectedSetSize(
+  avgSongCount: number | null | undefined,
+  predictions: { probability: number }[],
+): number {
+  if (avgSongCount != null && avgSongCount > 0) {
+    return Math.min(Math.round(avgSongCount), predictions.length)
+  }
+  const likely = predictions.filter((p) => p.probability >= 0.5).length
+  return Math.min(likely > 0 ? likely : 20, predictions.length)
+}
+
+/**
+ * 예상 셋리스트(타임라인 순서) — 확률 상위 size곡을 골라 평균 등장 위치순으로 배열한다.
+ * "처음 곡부터 마지막 곡까지 순서대로 예습"하는 뷰의 근거. 위치 정보가 없는 곡은 맨 뒤,
+ * 동률은 rank(확률순)로 결정적이게.
+ */
+export function buildExpectedSetlist<
+  T extends { rank: number; probability: number; avgPosition: number | null },
+>(predictionsByRank: T[], size: number): T[] {
+  return predictionsByRank
+    .slice(0, Math.max(1, size))
+    .toSorted((a, b) => {
+      const posA = a.avgPosition ?? Number.POSITIVE_INFINITY
+      const posB = b.avgPosition ?? Number.POSITIVE_INFINITY
+      return posA !== posB ? posA - posB : a.rank - b.rank
+    })
+}
+
 /** 공연까지 남은 날: "D-64" / "D-DAY" / 지났으면 "공연 종료". */
 export function dDayText(isoDate: string, today: Date = new Date()): string {
   const event = new Date(`${isoDate}T00:00:00`)
