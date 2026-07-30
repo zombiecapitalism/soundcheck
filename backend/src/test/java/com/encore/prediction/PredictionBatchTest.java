@@ -54,7 +54,9 @@ class PredictionBatchTest {
         PredictionGenerator generator = new PredictionGenerator(targetEventRepository, showRepository,
                 predictionRepository, new PredictionProperties(20, 0.95, 1.5),
                 JsonMapper.builder().build());
-        batch = new PredictionBatch(targetEventRepository, collectionLogRepository, generator);
+        // 변화 요약은 ChatClient가 필요한 부가 기능 — 슬라이스 테스트에서는 no-op으로 조립한다
+        batch = new PredictionBatch(targetEventRepository, collectionLogRepository, generator,
+                eventId -> { });
         artist = artistRepository.saveAndFlush(Artist.builder()
                 .mbid(UUID.randomUUID()).name("Megadeth").target(true).build());
     }
@@ -200,7 +202,7 @@ class PredictionBatchTest {
         PredictionGenerator sampleOfOne = new PredictionGenerator(targetEventRepository, showRepository,
                 predictionRepository, new PredictionProperties(1, 1.0, 1.0), JsonMapper.builder().build());
         PredictionBatch limitedBatch = new PredictionBatch(targetEventRepository, collectionLogRepository,
-                sampleOfOne);
+                sampleOfOne, eventId -> { });
         persistShow("upcoming", LocalDate.of(2026, 9, 30), ShowType.FESTIVAL); // 곡 0건
         persistShow("played", LocalDate.of(2026, 7, 1), ShowType.UNKNOWN,
                 song("Holy Wars", "holy wars", 1, false, false));
@@ -225,7 +227,7 @@ class PredictionBatchTest {
         PredictionGenerator smallSample = new PredictionGenerator(targetEventRepository, showRepository,
                 predictionRepository, new PredictionProperties(2, 1.0, 1.0), JsonMapper.builder().build());
         PredictionBatch limitedBatch = new PredictionBatch(targetEventRepository, collectionLogRepository,
-                smallSample);
+                smallSample, eventId -> { });
         persistShow("oldest", LocalDate.of(2026, 5, 1), ShowType.UNKNOWN,
                 song("Ancient Song", "ancient song", 1, false, false));
         persistShow("mid", LocalDate.of(2026, 6, 1), ShowType.UNKNOWN,

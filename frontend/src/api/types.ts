@@ -10,6 +10,8 @@ export interface EventSummary {
   expectedShowType: ShowType
   /** 실제 셋리스트가 연결됨 — 적중률 조회 가능 */
   verified: boolean
+  /** 예측 변화 LLM 요약(E4) — 변화 없음/생성 전이면 null */
+  trendSummary: string | null
   artist: {
     mbid: string
     name: string

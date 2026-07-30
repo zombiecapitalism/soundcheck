@@ -91,6 +91,11 @@ export default function PredictionsPage() {
               )}
             </p>
           )}
+          {event.trendSummary && (
+            <p className="trend-summary">
+              <span className="trend-summary-label">최근 변화</span> {event.trendSummary}
+            </p>
+          )}
         </header>
       )}
 

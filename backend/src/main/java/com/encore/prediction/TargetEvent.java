@@ -20,6 +20,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
 import java.time.LocalDate;
 
 @Entity
@@ -62,6 +63,13 @@ public class TargetEvent {
     @JoinColumn(name = "actual_setlist_id")
     private Show actualSetlist;
 
+    /** 예측 변화 LLM 요약(E4) — 재계산 시에만 갱신되는 캐시. 변화가 없으면 null. */
+    @Column(name = "trend_summary")
+    private String trendSummary;
+
+    @Column(name = "trend_summary_at")
+    private Instant trendSummaryAt;
+
     @Builder
     private TargetEvent(Artist artist, String eventName, LocalDate eventDate, String venueName,
                         ShowType expectedShowType, Short expectedSongCount) {
@@ -82,6 +90,12 @@ public class TargetEvent {
     /** 공연이 끝난 뒤 실제 셋리스트를 연결해 예측 적중률 검증의 정답으로 삼는다. */
     public void recordActualSetlist(Show actualSetlist) {
         this.actualSetlist = actualSetlist;
+    }
+
+    /** 예측 재계산 직후에만 호출 — 변화가 없어졌으면 null로 지워 낡은 요약이 남지 않게 한다. */
+    public void updateTrendSummary(String summary, Instant at) {
+        this.trendSummary = summary;
+        this.trendSummaryAt = summary != null ? at : null;
     }
 
     public boolean isVerifiable() {

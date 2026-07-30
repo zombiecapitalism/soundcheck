@@ -204,6 +204,8 @@ venue/tour명에 "festival"/"페스티벌"이 없는 페스티벌 공연장(예:
 | `expected_show_type` | VARCHAR(20) | N | FESTIVAL \| SOLO. **UNKNOWN 금지** (도메인 불변식 — 예측 가중의 기준이므로) |
 | `expected_song_count` | SMALLINT | Y | 예상 곡 수 |
 | `actual_setlist_id` | VARCHAR(20) | Y | FK → `show`. **공연 후 자동 매칭**으로 채워짐 → 적중률 검증. 채워지면 화면이 "검증 모드"로 전환 |
+| `trend_summary` | TEXT | Y (V8) | 예측 변화 LLM 요약(E4) — 예측 재계산 시에만 갱신, 변화 곡 없으면 NULL(LLM 미호출) |
+| `trend_summary_at` | TIMESTAMPTZ | Y (V8) | 요약 생성 시각 |
 
 **제약**: UNIQUE (artist_mbid, event_date) — 같은 아티스트의 같은 날 이벤트 중복 방지 (위반 시 API 409)
 

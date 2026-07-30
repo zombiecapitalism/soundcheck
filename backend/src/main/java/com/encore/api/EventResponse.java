@@ -14,6 +14,8 @@ public record EventResponse(
         String venueName,
         ShowType expectedShowType,
         boolean verified,
+        /** 예측 변화 LLM 요약(E4) — 변화가 없거나 아직 생성 전이면 null */
+        String trendSummary,
         ArtistSummary artist
 ) {
 
@@ -30,6 +32,7 @@ public record EventResponse(
                 event.getExpectedShowType(),
                 // 실제 셋리스트가 연결됐으면 적중률을 볼 수 있다 (null 체크만이라 lazy 초기화 없음)
                 event.isVerifiable(),
+                event.getTrendSummary(),
                 new ArtistSummary(event.getArtist().getMbid(), event.getArtist().getName()));
     }
 }

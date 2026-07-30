@@ -26,13 +26,16 @@ public class PredictionBatch {
     private final TargetEventRepository targetEventRepository;
     private final CollectionLogRepository collectionLogRepository;
     private final PredictionGenerator generator;
+    private final TrendSummarizer trendSummarizer;
 
     public PredictionBatch(TargetEventRepository targetEventRepository,
                            CollectionLogRepository collectionLogRepository,
-                           PredictionGenerator generator) {
+                           PredictionGenerator generator,
+                           TrendSummarizer trendSummarizer) {
         this.targetEventRepository = targetEventRepository;
         this.collectionLogRepository = collectionLogRepository;
         this.generator = generator;
+        this.trendSummarizer = trendSummarizer;
     }
 
     /** 아직 열리지 않은(당일 포함) 이벤트 전체를 재계산한다. */
@@ -53,6 +56,8 @@ public class PredictionBatch {
         Instant startedAt = Instant.now();
         try {
             PredictionGenerator.Summary summary = generator.predict(event.getId());
+            // 변화 요약(E4)은 재계산 직후에만 갱신 — 실패해도 예외를 던지지 않는 계약
+            trendSummarizer.update(event.getId());
             log.info("{} 예측 완료 — 표본 {}회, {}곡", event.getEventName(),
                     summary.sampleSize(), summary.savedPredictions());
             return collectionLogRepository.save(CollectionLog.success(

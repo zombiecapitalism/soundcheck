@@ -158,6 +158,8 @@ CREATE TABLE target_event (
     expected_show_type  VARCHAR(20) NOT NULL,        -- FESTIVAL
     expected_song_count SMALLINT,                    -- 페스티벌 셋 예상 곡 수
     actual_setlist_id   VARCHAR(20) REFERENCES show(setlist_id),  -- 공연 후 채움(적중률 검증)
+    trend_summary       TEXT,                        -- 예측 변화 LLM 요약(E4) — 재계산 시에만 갱신
+    trend_summary_at    TIMESTAMPTZ,
     UNIQUE (artist_mbid, event_date)
 );
 

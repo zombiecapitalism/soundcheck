@@ -80,7 +80,8 @@ class CollectionPipelineTest {
                 mock(SetlistCollector.class),
                 new PredictionBatch(targetEventRepository, collectionLogRepository,
                         new PredictionGenerator(targetEventRepository, showRepository, predictionRepository,
-                                new PredictionProperties(20, 0.95, 1.5), JsonMapper.builder().build())),
+                                new PredictionProperties(20, 0.95, 1.5), JsonMapper.builder().build()),
+                        eventId -> { }),
                 new AccuracyService(targetEventRepository, showRepository),
                 new BatchLock(),
                 mock(AsyncTaskExecutor.class));
