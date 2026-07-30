@@ -349,7 +349,15 @@ function EventSection({ onCreated }: { onCreated: () => void }) {
         </label>
         <label>
           공연일
-          <input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} required />
+          {/* 서버가 과거 날짜 등록을 400으로 거부한다 — 입력 단계에서 미리 막는다.
+              toISOString()은 UTC라 자정~오전 9시(KST)에 하루 어긋난다 — 로컬 날짜로 만든다 */}
+          <input
+            type="date"
+            value={eventDate}
+            min={new Date().toLocaleDateString('sv-SE')}
+            onChange={(e) => setEventDate(e.target.value)}
+            required
+          />
         </label>
         <label>
           공연장 (선택)

@@ -177,15 +177,24 @@ a {
 }
 
 .prediction-item {
-  display: block;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 12px 14px;
 }
 
-.prediction-item:active {
+/* 카드 배경 반응은 링크를 누를 때만 — 체크 버튼 조작에는 반응하지 않는다 */
+.prediction-item:has(.prediction-link:active) {
   background: var(--surface-raised);
+}
+
+.prediction-link {
+  display: block;
+  flex: 1;
+  min-width: 0;
 }
 
 .prediction-row {
@@ -787,7 +796,7 @@ select:focus {
   flex-shrink: 0;
   width: 32px;
   height: 32px;
-  margin: -4px -4px -4px 0;
+  margin: -2px -4px 0 0; /* 첫 행 텍스트와 시각적 중심을 맞춘다 */
   font-size: 15px;
   font-weight: 800;
   color: var(--track);

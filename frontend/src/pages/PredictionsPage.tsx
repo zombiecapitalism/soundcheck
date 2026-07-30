@@ -137,10 +137,14 @@ export default function PredictionsPage() {
               const played = playedByKey.get(prediction.songKey)
               const practiced = checkedKeys.has(prediction.songKey)
               return (
-                <li key={prediction.songKey}>
+                // 체크 버튼은 링크의 형제다 — 앵커 안에 인터랙티브 요소를 두면 HTML 비준수
+                <li
+                  key={prediction.songKey}
+                  className={practiced ? 'prediction-item practiced' : 'prediction-item'}
+                >
                   <Link
                     to={`/events/${eventId}/songs/${encodeURIComponent(prediction.songKey)}`}
-                    className={practiced ? 'prediction-item practiced' : 'prediction-item'}
+                    className="prediction-link"
                   >
                     <div className="prediction-row">
                       <span className="prediction-rank">
@@ -154,20 +158,6 @@ export default function PredictionsPage() {
                       <span className="prediction-percent">
                         {formatPercent(prediction.probability)}
                       </span>
-                      <button
-                        type="button"
-                        className={practiced ? 'practice-check checked' : 'practice-check'}
-                        aria-label={practiced ? '예습 완료 해제' : '예습 완료 표시'}
-                        aria-pressed={practiced}
-                        onClick={(e) => {
-                          // 행 전체가 곡 상세 링크라, 체크는 내비게이션을 막고 토글만 한다
-                          e.preventDefault()
-                          e.stopPropagation()
-                          toggle(prediction.songKey)
-                        }}
-                      >
-                        ✓
-                      </button>
                     </div>
                     {view === 'probability' && <ProbabilityBar probability={prediction.probability} />}
                     <p className="prediction-evidence">
@@ -178,6 +168,15 @@ export default function PredictionsPage() {
                       )}
                     </p>
                   </Link>
+                  <button
+                    type="button"
+                    className={practiced ? 'practice-check checked' : 'practice-check'}
+                    aria-label={practiced ? '예습 완료 해제' : '예습 완료 표시'}
+                    aria-pressed={practiced}
+                    onClick={() => toggle(prediction.songKey)}
+                  >
+                    ✓
+                  </button>
                 </li>
               )
             })}

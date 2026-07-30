@@ -27,15 +27,21 @@ function save(eventId: number, keys: string[]) {
 }
 
 export function usePracticeChecklist(eventId: number) {
-  const [keys, setKeys] = useState<string[]>(() => load(eventId))
+  const [state, setState] = useState(() => ({ eventId, keys: load(eventId) }))
+
+  // 라우터가 같은 컴포넌트를 재사용해 eventId만 바뀌면(마운트 없음) 이전 이벤트의
+  // 체크가 새 이벤트 키에 저장된다 — 렌더 중 감지해 즉시 리셋한다(React 공식 패턴)
+  if (state.eventId !== eventId) {
+    setState({ eventId, keys: load(eventId) })
+  }
 
   const toggle = (songKey: string) => {
-    setKeys((prev) => {
-      const next = toggleKey(prev, songKey)
-      save(eventId, next)
-      return next
+    setState((prev) => {
+      const next = toggleKey(prev.keys, songKey)
+      save(prev.eventId, next)
+      return { eventId: prev.eventId, keys: next }
     })
   }
 
-  return { checkedKeys: new Set(keys), toggle }
+  return { checkedKeys: new Set(state.keys), toggle }
 }
