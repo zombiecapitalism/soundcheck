@@ -29,6 +29,7 @@ erDiagram
     artist ||--o{ target_event : "artist_mbid"
     artist ||--o{ rag_document : "artist_mbid"
     artist ||--o{ song_explanation : "artist_mbid"
+    artist ||--o{ song_video : "artist_mbid"
     show ||--o{ show_song : "setlist_id (CASCADE)"
     show |o--o{ target_event : "actual_setlist_id (검증용)"
     target_event ||--o{ prediction : "target_event_id (CASCADE)"
@@ -90,6 +91,17 @@ erDiagram
         TEXT content
         JSONB sources
     }
+    llm_call_log {
+        BIGSERIAL id PK
+        VARCHAR call_type
+        INT latency_ms
+        TEXT error_message
+    }
+    song_video {
+        BIGSERIAL id PK
+        VARCHAR song_key
+        VARCHAR video_id
+    }
 ```
 
 - `collection_log.artist_mbid`는 의도적으로 **FK 미선언**(값 컬럼) — 아티스트 단위가 아닌 작업도 기록하므로 nullable 값으로 둔다.
@@ -106,6 +118,8 @@ erDiagram
 | 예측 | `target_event` | 예측 대상 공연 (예: 부산록페 - Megadeth) | JPA `TargetEvent` |
 | 예측 | `prediction` | 곡별 예측 결과 (배치 사전 계산) | JPA `Prediction` |
 | 운영 | `collection_log` | 배치 실행 이력 (수집/예측/임베딩 공용) | JPA `CollectionLog` |
+| 운영 | `llm_call_log` | LLM 호출 이력 — 비용·지연·캐시 계측 (E9, V9) | JPA `LlmCallLog` |
+| 재생목록 | `song_video` | 곡별 YouTube 영상 ID 캐시 (E12, V10) | JPA `SongVideo` |
 | RAG | `rag_document` | RAG 문서 메타 (출처 포함) | JPA `RagDocument` |
 | RAG | `rag_chunk` | 청크 + 임베딩 벡터 | **JdbcClient 직접** (vector 타입) |
 | RAG | `song_explanation` | 곡 설명 생성 결과 캐시 | JPA 읽기 전용 + upsert SQL |
@@ -223,7 +237,7 @@ venue/tour명에 "festival"/"페스티벌"이 없는 페스티벌 공연장(예:
 | `rank` | SMALLINT | N | 확률 내림차순 → 연주 횟수 내림차순 → song_key 오름차순 (결정적 정렬), 1부터 |
 | `played_count` | SMALLINT | N | 근거: 표본 N회 중 연주 횟수 |
 | `sample_size` | SMALLINT | N | 근거: 표본 크기 N (기본 20) |
-| `avg_position` | NUMERIC(4,1) | Y | 평균 셋 내 위치 (scale 1) |
+| `avg_position` | NUMERIC(4,1) | Y | **평균 연주 순번** — position_total이 아니라 실연주(tape·중복 제외) 기준 1-base 순번의 평균 (scale 1). evidence `appearances[].positionTotal`은 원본 순번이라 기준이 다름 |
 | `encore_ratio` | NUMERIC(5,4) | Y | 앙코르 등장 비율 |
 | `evidence` | JSONB | Y | 계산 상세: `{recencyDecay, matchingShowTypeBoost, weightedScore, totalWeight, baseFrequency, unboostedProbability, recentCount5, trend(RISING\|STABLE\|FALLING), positionStats{opener,early,mid,late,encore}, typeBreakdown{festivalShows,festivalPlayed,soloShows,soloPlayed}, appearances[{setlistId, eventDate, weight, positionTotal, encore}]}` — Explainable AI(E1)·위치 분석(E3)·변화 분석(E4) 원천 데이터. **appearances는 곡이 실제 연주된 공연만**(미등장 공연 미포함, 최근순). `unboostedProbability` 이하는 v0.2 확장분 — 이전 스냅샷에는 없고 역직렬화 시 null |
 | `computed_at` | TIMESTAMPTZ | N | 계산 시각 |
@@ -250,7 +264,7 @@ venue/tour명에 "festival"/"페스티벌"이 없는 페스티벌 공연장(예:
 | `input_tokens` / `output_tokens` | INT | Y | usage 메타데이터 없으면(스트리밍) NULL — 비용 집계는 있는 값만 합산 |
 | `latency_ms` | INT | N | |
 | `cache_hit` | BOOLEAN | N | EXPLANATION 캐시 히트는 LLM 미호출 행으로 기록 |
-| `error_message` | TEXT | Y | NULL = 성공 |
+| `error_message` | TEXT | Y | NULL = 성공, `'cancelled'` = 클라이언트 스트림 취소(비용은 발생 — 오류 집계에서 제외, 대시보드 별도 칼럼), 그 외 = 오류 |
 | `created_at` | TIMESTAMPTZ | N | 인덱스 `(created_at DESC)` |
 
 계측은 `LlmCallRecorder`가 하며 **절대 예외를 던지지 않는다** — 계측 실패가 원 기능을 깨면 안 된다.

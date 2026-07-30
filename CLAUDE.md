@@ -32,7 +32,8 @@ setlist.fm의 과거 공연 데이터를 수집해 "이번 공연에서 어떤 �
   /src/main/java/com/encore
     /artist       아티스트 도메인
     /setlist      공연/셋리스트 도메인 (수집 포함)
-    /prediction   예측 로직 (계산기·정확도·예상 셋리스트·유사 공연·변화 요약)
+    /prediction   예측 로직 (계산기·정확도·예상 셋리스트·유사 공연)
+    /trend        예측 변화 LLM 요약 (prediction과 분리 — LLM 의존 격리)
     /rag          RAG 파이프라인
     /chat         RAG Chat (tool calling, 레이트리밋)
     /llm          LLM 계측 (llm_call_log, 비용 추정)
@@ -42,7 +43,7 @@ setlist.fm의 과거 공연 데이터를 수집해 "이번 공연에서 어떤 �
     /api          REST 어댑터 (컨트롤러, 응답 DTO, Problem Detail 변환)
     /common       공통(설정, 예외, 응답 래퍼)
 /frontend         React SPA
-/docs             설계 문서 (PRD, 스키마)
+/docs             설계 문서 (PRD, 스키마, 구현 계획, 튜닝 로그, /design 설계 4종)
 docker-compose.yml
 ```
 

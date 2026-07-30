@@ -1,6 +1,6 @@
 # 확장 기능 구현 계획 (PRD v0.2 §4.3)
 
-- 작성일: 2026-07-30 / **E1~E11 전체 구현 완료: 2026-07-31** (계획했던 P1→P2→P3 순서대로 진행)
+- 작성일: 2026-07-30 / **E1~E11 전체 구현 완료: 2026-07-31** (계획했던 P1→P2→P3 순서대로 진행). 이후 사용자 요청으로 **E12 묶음 듣기(YouTube 재생목록)** 추가 구현 — PRD §4.3 참조.
 - 전제: MVP(F1~F5) + 정확도 평가 구현 완료 상태. 항목 번호(E1~E11)는 PRD §4.3 기준.
 - 원칙: 새 계산 로직은 `PredictionCalculator`·`AccuracyCalculator`처럼 **순수 함수 + 단위 테스트**로 만들고, 스키마 변경 시 Flyway 마이그레이션 + `/docs/setlist-schema.md` 갱신을 함께 한다.
 
@@ -134,6 +134,7 @@
 |--------------|------|------|
 | V8 | `target_event.trend_summary`, `trend_summary_at` (+ 필요 시 `prediction.position_stats` 승격) | P2 |
 | V9 | `llm_call_log` 테이블 | P3 |
+| V10 | `song_video` — 재생목록(E12) 영상 ID 캐시 | E12 |
 
 각 마이그레이션 시 `/docs/setlist-schema.md` 동시 갱신.
 

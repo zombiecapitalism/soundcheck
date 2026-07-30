@@ -19,6 +19,7 @@
 | 관리자 API | `/api/admin/**` | HTTP Basic (InMemory 1계정, STATELESS, CSRF 비활성) |
 
 - 401 응답은 자체 JSON 본문을 반환하며 **`WWW-Authenticate` 헤더를 의도적으로 생략** — 브라우저 네이티브 로그인 팝업 차단.
+- **로그인 브루트포스 방어**: IP당 10분 창에서 인증 실패 10회를 넘으면 `/api/admin/**` 전체가 **429**(비밀번호 검증 자체를 건너뜀). 성공 시 카운터 리셋. IP는 X-Forwarded-For **마지막** 항목(신뢰 프록시 기준 — 첫 항목은 위조 가능).
 
 ### 1.2 에러 응답 — RFC 7807 Problem Detail
 
@@ -34,6 +35,8 @@
 | 401 | 관리자 인증 실패 |
 | 404 | 리소스 없음 (`ApiNotFoundException`) |
 | 409 | 데이터 충돌 (아티스트·날짜 중복 이벤트, 배치 중복 실행) |
+| 429 | 요청 제한 (Chat 분당 5회, 관리자 로그인 실패 10회) |
+| 503 | 기능 미설정 (재생목록 — `YOUTUBE_API_KEY` 없음) |
 
 클라이언트는 `detail ?? title`을 사용자 메시지로 사용한다.
 
@@ -80,10 +83,12 @@ GET /api/events
 ```json
 [{ "id": 1, "eventName": "2026 부산국제록페스티벌", "eventDate": "2026-10-02",
    "venueName": "삼락생태공원", "expectedShowType": "FESTIVAL", "verified": false,
+   "trendSummary": "최근 셋리스트에서 신곡 비중이 늘고 있습니다…",
    "artist": { "mbid": "uuid", "name": "MEGADETH" } }]
 ```
 
 - `verified`: `actual_setlist_id` 연결 여부 — true면 화면이 검증 모드로 전환.
+- `trendSummary`(E4): 예측 재계산 시 갱신되는 변화 LLM 요약 — 변화 없음/생성 전이면 null(화면 미표시).
 
 ### API-03 예측 목록
 
@@ -170,7 +175,7 @@ POST /api/events/{id}/playlist
 
 | 구분 | 내용 |
 |------|------|
-| 비용 가드 | **예측 목록에 있는 곡만** 검색(임의 곡명 쿼터 유출 방지), 결과는 실패까지 `song_video`에 캐시, 최대 50곡 |
+| 비용 가드 | **예측 목록에 있는 곡만** 검색(임의 곡명 쿼터 유출 방지), 최대 50곡. "검색했지만 못 찾음"은 네거티브 캐시(재검색 방지), **일시 실패(쿼터 초과·네트워크)는 캐시하지 않고** 그 곡만 missing(부분 성공) |
 | 실패 | 이벤트 없음 404 / `YOUTUBE_API_KEY` 미설정 503 / 곡 0개·50곡 초과 400 |
 
 ```json
@@ -266,7 +271,7 @@ Accept: text/event-stream
 | `done` | `{}` | 정상 종료 |
 | `error` | 오류 메시지 | 연결을 끊지 않고 이벤트로 통지 — 클라이언트는 수신 즉시 `close()` (자동 재연결 방지) |
 
-- 근거 문서가 없거나 유사도 미달이면 본문이 정확히 `"정보 없음"` 1건 — 클라이언트 빈 상태 판별 문자열.
+- 근거 문서가 없거나 유사도 미달이면 본문이 정확히 `"정보 없음"` 1건. 클라이언트는 모델이 구두점을 덧붙이는 실측 때문에 `/^정보 없음[.!]?$/` 패턴으로 빈 상태를 판별한다.
 
 ### API-07a RAG Chat (E8, SSE)
 
@@ -280,7 +285,7 @@ Content-Type: application/json / Accept: text/event-stream
 |------|------|
 | 방식 | tool calling(searchDocs=배경 문서 검색, getPredictionStats=예측 조회) 스트리밍. 도구 결과 밖 내용 생성 금지 프롬프트 |
 | 이력 | 클라이언트가 이전 메시지를 함께 전송(stateless). 서버는 최근 12메시지(6턴)만 사용 |
-| 검증 | 이벤트 없음 404 / 마지막 메시지가 비어 있거나 user가 아니면 400 / 질문 500자 초과 400 |
+| 검증 | 이벤트 없음 404 / 400: 마지막 메시지가 user가 아님, 어느 메시지든 content 빈 값·role이 user/assistant 아님, 질문 500자 초과, **이력 메시지당 2,000자 초과**(이력으로 토큰 가드 우회 방지) |
 | 비용 가드 | IP·이벤트당 분당 5회(429), `llm_call_log`(CHAT) 기록 |
 | SSE 순서 | `delta`* → `sources` → `done` — **출처가 도구 실행 후 확정되므로 곡 설명과 순서가 다르다**. 실패는 `error` 이벤트 |
 | 출처 | 문서 도구 사용 시 URL 목록, 통계 도구 사용 시 `{name: "Soundcheck", url: "", title: "예측 데이터 기준"}` |
@@ -370,10 +375,11 @@ GET /api/admin/ai-dashboard
 { "totalCalls": 42, "cacheHitRate": 0.6190, "inputTokens": 15000, "outputTokens": 4200,
   "embeddingTokens": 8000, "estimatedCostUsd": 0.0049,
   "byType": [{ "callType": "EXPLANATION", "calls": 21, "avgLatencyMs": 2100,
-               "inputTokens": 0, "outputTokens": 0, "cacheHits": 13, "errors": 0 }] }
+               "inputTokens": 0, "outputTokens": 0, "cacheHits": 13, "cancelled": 2, "errors": 0 }] }
 ```
 
 - 스트리밍 호출(EXPLANATION·CHAT)은 usage 메타데이터가 없어 토큰이 NULL로 기록될 수 있다 — 토큰 합계는 기록된 값만 합산한 하한치.
+- `cancelled`: 클라이언트가 스트림을 끊은 호출(`error_message = 'cancelled'` 센티널) — 비용은 발생했으므로 calls에 포함되지만 errors에서는 제외.
 
 ### API-14b RAG 저장소 관리 (E10)
 
@@ -421,10 +427,16 @@ GET /api/admin/korea-shows
 | 01 | GET | `/api/artists/{mbid}` | — | 아티스트 + 수집 통계 | SC-02 |
 | 02 | GET | `/api/events` | — | 이벤트 목록 | SC-01, SC-02 |
 | 03 | GET | `/api/events/{id}/predictions` | — | 예측 목록 (rank순) | SC-02 |
-| 04 | GET | `/api/events/{id}/predictions/{songKey}` | — | 예측 상세 + 타임라인 | SC-03 |
+| 04 | GET | `/api/events/{id}/predictions/{songKey}` | — | 예측 상세 + 타임라인 + 근거 | SC-03 |
+| 04a | GET | `/api/events/{id}/expected-setlist` | — | 예상 셋리스트 (본편/앙코르) | SC-02 |
+| 04b | GET | `/api/events/{id}/similar-shows` | — | 유사 공연 상위 3 | SC-02 |
+| 04c | POST | `/api/events/{id}/playlist` | — | YouTube 재생목록 링크 / 503 | SC-02 |
 | 05 | GET | `/api/events/{id}/accuracy` | — | 적중률 상세 | SC-02 (검증 모드) |
 | 06 | GET | `/api/events/accuracy` | — | 적중률 아카이브 | SC-01 |
+| 06a | GET | `/api/artists/{mbid}/songs/{songKey}/stats` | — | 곡 장기 통계 | SC-03 |
+| 06b | GET | `/api/artists/{mbid}/stats` | — | 아티스트 활동 통계 | (예비) |
 | 07 | GET | `/api/songs/{songKey}/explanation` | — | **SSE** 곡 설명 | SC-03 |
+| 07a | POST | `/api/events/{id}/chat` | — | **SSE** RAG Chat / 429 | SC-02 |
 | 08 | GET | `/api/admin/artists` | Basic | 등록 아티스트 | SC-04 |
 | 09 | GET | `/api/admin/artists/search` | Basic | setlist.fm 검색 | SC-04 |
 | 10 | POST | `/api/admin/artists` | Basic | 201 등록 | SC-04 |
@@ -432,6 +444,11 @@ GET /api/admin/korea-shows
 | 12 | POST | `/api/admin/batch/collect` | Basic | 202 / 409 | SC-04 |
 | 13 | POST | `/api/admin/batch/predict` | Basic | 200 로그 | SC-04 |
 | 14 | POST | `/api/admin/batch/rag-ingest` | Basic | 202 / 409 | SC-04 |
+| 14a | GET | `/api/admin/ai-dashboard` | Basic | LLM 사용량 (오늘) | SC-04 |
+| 14b | GET | `/api/admin/rag/status` | Basic | 아티스트별 RAG 상태 | SC-04 |
+| 14b | GET | `/api/admin/rag/documents` | Basic | 문서 목록 | SC-04 |
+| 14b | DELETE | `/api/admin/rag/documents/{id}` | Basic | 문서 삭제(+캐시 무효화) | SC-04 |
+| 14b | DELETE | `/api/admin/rag/cache/{artistMbid}` | Basic | 설명 캐시 무효화 | SC-04 |
 | 15 | GET | `/api/admin/logs` | Basic | 이력 + 진행 상태 | SC-04 |
 | 16 | GET | `/api/admin/korea-shows` | Basic | KR 공연 후보 | SC-04 |
 

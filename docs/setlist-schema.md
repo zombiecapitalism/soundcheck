@@ -173,7 +173,7 @@ CREATE TABLE prediction (
     rank                SMALLINT NOT NULL,
     played_count        SMALLINT NOT NULL,           -- 근거: 최근 N회 중 연주 횟수
     sample_size         SMALLINT NOT NULL,           -- 근거: N
-    avg_position        NUMERIC(4,1),                -- 평균 셋 내 위치
+    avg_position        NUMERIC(4,1),                -- 평균 연주 순번 — 실연주(tape·중복 제외) 기준 1-base
     encore_ratio        NUMERIC(5,4),                -- 앙코르 등장 비율
     evidence            JSONB,                       -- 계산 상세(디버깅/설명용)
     computed_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -203,6 +203,27 @@ CREATE TABLE song_video (
     searched_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (artist_mbid, song_key)
 );
+```
+
+### 2.2b LLM 호출 이력 (V9)
+
+```sql
+-- 호출마다 1행 — 비용·지연·캐시 효율을 관리자 AI 대시보드에서 집계한다.
+-- 토큰은 usage 메타데이터가 없으면(스트리밍) NULL. error_message: NULL=성공,
+-- 'cancelled'=클라이언트 스트림 취소(오류 집계 제외), 그 외=오류.
+CREATE TABLE llm_call_log (
+    id              BIGSERIAL PRIMARY KEY,
+    call_type       VARCHAR(30) NOT NULL,     -- EXPLANATION | CHAT | TREND_SUMMARY | EMBEDDING
+    model           VARCHAR(100),
+    input_tokens    INT,
+    output_tokens   INT,
+    latency_ms      INT NOT NULL,
+    cache_hit       BOOLEAN NOT NULL DEFAULT FALSE,
+    error_message   TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_llm_call_log_created ON llm_call_log (created_at DESC);
 ```
 
 ### 2.3 배치 이력
@@ -280,7 +301,7 @@ CREATE TABLE song_explanation (
 1. 소문자 변환, 앞뒤 공백 제거
 2. 유니코드 정규화(NFKC) — 전각/반각, 특수 따옴표 통일
 3. 괄호 부가정보 제거: `(Live)`, `(Acoustic)`, `(Reprise)` 등 화이트리스트 방식으로 제거
-4. 구두점 제거 후 공백 1칸으로 압축 (`Bat Country!` → `bat country`)
+4. 구두점 처리 후 공백 1칸으로 압축 — 아포스트로피는 삭제(`don't` → `dont`), 그 외 구두점은 공백 치환 (`Bat Country!` → `bat country`). 결과가 비면 원본 소문자로 폴백
 5. 선행 관사 유지 (`The Stage` ≠ `Stage` 인 경우가 있어 무리한 제거 금지)
 
 > 정규화는 **손실 변환**이므로 `song_name`(원본)과 `song_key`(집계용)를 반드시 분리 저장. 나중에 오탐 발견 시 원본으로 재생성 가능.

@@ -19,7 +19,12 @@
 | PR-05 | RAG 문서 수집·임베딩 | 관리자 수동 (스케줄 없음) | 비동기 (별도 락) | EMBED |
 | PR-06 | 곡 설명 생성 (RAG 검색+생성) | 사용자 곡 상세 조회 (SSE) | 온라인, 캐시 우선 | — |
 | PR-07 | 적중률 평가 | 사용자/아카이브 조회 시 | 온라인 계산 (순수 함수) | — |
-| PR-08 | 아티스트/이벤트 등록 | 관리자 | 동기 | — |
+| PR-08 | 아티스트/이벤트 등록 | 관리자 | 동기 (등록 이벤트 단건 예측) | — |
+| PR-09 | RAG Chat (E8) | 사용자 질문 (SSE) | 온라인, tool calling + 레이트리밋 | llm_call_log(CHAT) |
+| PR-10 | 재생목록 생성 (E12) | 사용자 "YouTube로 듣기" | 온라인, 캐시 미스만 YouTube 검색 | — |
+| PR-11 | 로그 retention | 스케줄 매일 05:10 KST | 동기 | — |
+
+LLM을 부르는 모든 프로세스(PR-04 요약·PR-06·PR-09·임베딩)는 `llm_call_log`에 계측된다(E9 — 완료/오류/취소 각 1회 기록, 관리자 AI 대시보드에서 집계).
 
 ### 전체 흐름
 
@@ -45,8 +50,8 @@ flowchart LR
 
 ## 2. PR-01 일일 파이프라인
 
-- **트리거**: ① `@Scheduled` cron `0 30 5 * * *` (Asia/Seoul, 설정 `encore.collect.cron`) — 애플리케이션의 유일한 스케줄 ② `POST /api/admin/batch/collect`
-- **동시 실행 제어**: 프로세스 내 `AtomicBoolean` CAS 락(`BatchLock`). 획득 실패 시 스케줄러는 로그만 남기고, 관리자 API는 409를 반환한다. 단일 인스턴스 배포 전제 — 다중 인스턴스로 확장 시 DB 락으로 교체 필요.
+- **트리거**: ① `@Scheduled` cron `0 30 5 * * *` (Asia/Seoul, 설정 `encore.collect.cron`) ② `POST /api/admin/batch/collect`. 스케줄은 이 외에 로그 retention(PR-11, 05:10 KST) 하나가 더 있다.
+- **동시 실행 제어**: 프로세스 내 `AtomicBoolean` CAS 락(`BatchLock`) — **수집 락과 예측 락이 분리**되어 있다. 수집 락은 파이프라인 전체(획득 실패 시 스케줄러는 로그만, 관리자 API는 409), 예측 락은 매칭+예측 구간을 보호한다(수집 말미·관리자 재계산·이벤트 등록 단건 예측이 공유 — 같은 이벤트의 DELETE+INSERT 경쟁으로 생기는 가짜 FAILED 방지). 수집 말미에 예측 락이 잡혀 있으면 재계산을 건너뛴다(다음 배치가 따라잡음). 단일 인스턴스 배포 전제 — 다중 인스턴스로 확장 시 DB 락으로 교체 필요.
 - **실행**: 락 획득 → 태스크 익스큐터에 제출(제출 실패 시 락 즉시 해제) → `수집 → 매칭 → 예측` 순차 실행 → finally에서 락 해제.
 - **날짜 기준**: "오늘" 판정은 서버 타임존이 아닌 **KST 고정**(`KoreaTime`) — cron 타임존과 동일 기준.
 
@@ -147,12 +152,13 @@ flowchart TD
 | 반올림 | probability scale 4, avg_position scale 1, encore_ratio scale 4 — 전부 HALF_UP |
 | 순위 | 확률 ↓ → played_count ↓ → song_key ↑ (결정적), rank 1부터 |
 | 근거 보존 | `evidence` JSONB에 파라미터·공연별 가중치 전량 저장 (Explainable AI 원천) |
-| 파라미터 검증 | recencyDecay ∈ (0,1], boost ≥ 1.0 — 위반 시 즉시 예외 |
+| 파라미터 검증 | 설정 경로(`PredictionProperties`): recencyDecay ∈ (0,1], boost ≥ 1.0. 순수 함수(`Params`)는 boost > 0만 요구 — 위반 시 즉시 예외 |
 
 ### 5.3 저장
 
 - 이벤트 단위 트랜잭션에서 **전체 교체**: 벌크 JPQL DELETE(즉시 실행) → INSERT. 파생 deleteBy는 Hibernate 실행 순서 문제로 유니크 충돌하므로 사용 금지.
 - 이벤트 1건당 `collection_log(PREDICT)` 1건: fetched=표본 수, updated=저장 곡 수.
+- 저장 직후 **변화 요약(E4, `com.encore.trend`) 갱신**: evidence에서 신규 진입/이탈/상승·하락 곡을 추출해 LLM 2~3문장 요약을 `target_event.trend_summary`에 캐시한다. 변화 곡이 없으면 LLM을 부르지 않고 요약을 지운다. LLM 호출은 트랜잭션 밖(커넥션 미점유), 실패해도 예측 배치를 실패시키지 않는다(`TrendSummarizer` 계약).
 
 ### 5.4 파라미터 튜닝
 
@@ -204,13 +210,13 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A["요청 (songKey, artistMbid, songName)"] --> B{"사전 검증"}
+    A["요청 (songKey, artistMbid)"] --> B{"사전 검증"}
     B -- "미등록 아티스트 /<br/>예측에 없는 songKey" --> B404["404<br/>(임의 키로 LLM 비용 유출 방지)"]
     B --> C{"song_explanation<br/>캐시 히트?"}
     C -- 히트 --> C1["LLM 미호출 —<br/>저장된 본문+출처 즉시 반환"]
     C -- 미스 --> D{"해당 아티스트<br/>rag_document 존재?"}
     D -- 없음 --> D1["임베딩 API도 미호출 —<br/>'정보 없음' (캐시 안 함)"]
-    D -- 있음 --> E["질의 임베딩: '{artistName} {songName}'<br/>(원본 곡명 — 정규화 키는 손실 변환)"]
+    D -- 있음 --> E["질의 임베딩: '{artistName} {songName}'<br/>(곡명은 서버가 prediction.song_name에서 읽음 —<br/>클라이언트 값 불신: 프롬프트 주입·캐시 오염 방지)"]
     E --> F["pgvector 검색: top-5,<br/>코사인 score ≥ 0.35,<br/>곡 문서는 해당 곡만 + 앨범/아티스트 문서 공용"]
     F -- "근거 0건" --> D1
     F --> G["LLM 스트리밍 생성 (gpt-4o-mini, temp 0.3)<br/>system: 자료 근거만·가사 인용 금지·[n] 출처 표기"]
@@ -240,7 +246,7 @@ flowchart TD
 
 - 실제 셋 곡도 tape 제외 + 리프라이즈 첫 위치만 — 예측 집계와 동일 규칙.
 - scale 4, HALF_UP. 실연주 곡 0이면 평가 불가(예외).
-- 확장 예정(P1): F1 = 2·P·R/(P+R), Top-N Accuracy. Accuracy(정분류율)는 TN이 정의되지 않아 채택하지 않음.
+- 확장 지표(E2, 구현됨): `f1` = 2·P·R/(P+R) (둘 다 0이면 0), `top5`/`top10` = 상위 N곡 성적(예측이 N곡 미만이면 있는 만큼이 분모). Accuracy(정분류율)는 TN이 정의되지 않아 채택하지 않음.
 
 ## 9. PR-08 아티스트/이벤트 등록 (관리자)
 
@@ -251,11 +257,27 @@ flowchart TD
 1. `event_date < 오늘(KST)` → 400 (사후 예측 방지 — 공연이 끝난 뒤 등록해 적중률을 조작하는 경로 차단)
 2. 아티스트 미등록 → 404
 3. `saveAndFlush`로 UNIQUE(artist_mbid, event_date) 충돌을 즉시 409로 전환
-4. 매칭+예측을 **동기 실행** → 응답의 `predictionStatus`(SUCCESS/FAILED)로 즉시 결과 확인
+4. **해당 이벤트만** 단건 예측을 동기 실행(전체 재계산은 이벤트 수 × LLM 요약 비용) → 응답 `predictionStatus`: SUCCESS / FAILED(수집 전 등) / **PENDING**(배치와 겹쳐 건너뜀 — 진행 중 배치가 마저 계산)
 
 **내한 감지**: 수집된 `show` 중 `country_code = 'KR'` 공연을 후보로 제시 → 원클릭으로 이벤트 등록 (이벤트명 "{아티스트} 내한 공연" 자동 조립, showType 승계).
 
 ---
+
+## 9a. PR-09 RAG Chat (E8)
+
+- `POST /api/events/{id}/chat` (SSE `delta* → sources → done`). 도구 2종(`searchDocs` 문서 검색, `getPredictionStats` 예측 조회) 결과 밖 내용 생성 금지.
+- 이력은 클라이언트가 함께 전송(stateless) — 서버가 최근 12메시지(6턴)·질문 500자·이력 메시지당 2,000자를 강제.
+- 비용 가드: IP·이벤트당 분당 5회(429), 캐시 불가 유형이라 전 호출을 `llm_call_log(CHAT)`에 기록(취소 포함).
+
+## 9b. PR-10 재생목록 생성 (E12)
+
+- `POST /api/events/{id}/playlist` — 선택 곡을 YouTube 영상으로 해석해 `watch_videos` 임시 재생목록 링크 생성(계정에 아무것도 만들지 않음).
+- 비용 가드: **예측 목록에 있는 곡만** 검색(임의 곡명 쿼터 유출 방지), 최대 50곡. "검색했지만 못 찾음"은 `song_video`에 네거티브 캐시(재검색 방지), **일시 실패(쿼터 초과·네트워크)는 캐시하지 않고** 그 곡만 missing으로 응답(부분 성공).
+- `YOUTUBE_API_KEY` 미설정이면 이 기능만 503 — 앱 기동과 무관.
+
+## 9c. PR-11 로그 retention
+
+- `@Scheduled` 05:10 KST (`encore.retention.cron`) — `collection_log`·`llm_call_log`의 **90일** 지난 행 삭제. 무한 성장하는 유이한 테이블에 대한 상한.
 
 ## 10. 공통 정책
 
@@ -287,3 +309,7 @@ flowchart TD
 | `encore.rag.chunk-target-tokens` | 650 | 청크 크기 |
 | `encore.rag.max-songs-per-artist` | 30 | RAG 곡 상한 |
 | `setlist-fm.min-request-interval` | 500ms | 레이트 리밋 |
+| `encore.rag.max-content-chars` | 40000 | 문서당 임베딩 본문 상한 |
+| `encore.retention.cron` | `0 10 5 * * *` (KST) | 로그 retention (90일) |
+| `encore.llm.cost.*` | 0.15 / 0.60 / 0.02 | 대시보드 예상 비용 단가 (USD/1M 토큰: 입력/출력/임베딩) |
+| `youtube.api-key` / `base-url` | (없음) / Data API v3 | 재생목록 — 키 없으면 기능만 503 |

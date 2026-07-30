@@ -18,7 +18,7 @@
 | SC-04 | 관리자 콘솔 | `/admin` | `AdminPage` (로그인 게이트 + 콘솔) | Basic 인증 |
 
 - 라우트 정의: `frontend/src/App.tsx`
-- 미정의 URL에 대한 404 전용 화면은 현재 없음 (§8 개선 항목 참조)
+- 미정의 URL은 `*` catch-all 라우트의 `NotFound`(안내 문구 + 홈 링크)로 처리한다 (§8 #1 완료)
 
 ### 1.1 화면 흐름도
 
@@ -145,7 +145,7 @@ flowchart TD
 
 - **경로**: `/events/:eventId` · **파일**: `pages/PredictionsPage.tsx`
 - **목적**: 앱의 핵심 화면. 곡별 연주 확률과 근거를 확률순으로 보여주고, 예습 체크리스트로 진도를 관리한다. 공연 종료 후 검증되면 같은 화면이 "예측 vs 실제" 결과 화면으로 전환된다.
-- **화면 변형**: (적중률 카드 유무 = `event.verified`) × (보기 모드 = 확률순/예상 순서) 2×2
+- **화면 변형**: (적중률 카드 유무 = `event.verified`) × (보기 모드 = 확률순/예상 순서/예습 코스)
 
 ### 4.1 레이아웃
 
@@ -183,10 +183,11 @@ flowchart TD
 
 | 구분 | 내용 |
 |------|------|
-| 조회 API | `GET /api/events` 캐시에서 단건 select(단건 API 없음) · `GET /api/artists/{mbid}` · `GET /api/events/{id}/predictions` · `GET /api/events/{id}/accuracy` (verified일 때만) |
-| 보기 토글 | 확률순(기본) ⇄ 예상 순서. 예상 순서는 상위 N곡을 평균 등장 위치순 재정렬 (`lib/format.ts` `buildExpectedSetlist`, N = 아티스트 유형별 평균 곡 수) |
+| 조회 API | `GET /api/events` 캐시에서 단건 select(단건 API 없음) · `GET /api/artists/{mbid}` · `GET /api/events/{id}/predictions` · `GET /api/events/{id}/accuracy` (verified) · `GET /api/events/{id}/expected-setlist` (예상 순서 전환 시) · `GET /api/events/{id}/similar-shows` · `POST /api/events/{id}/chat` (SSE) · `POST /api/events/{id}/playlist` |
+| 보기 토글 | 확률순(기본) / 예상 순서 / 예습 코스 3종. **예상 순서는 백엔드 응답(E6, 본편/앙코르 블록 + Encore 구분선)** — 프론트 재정렬(`buildExpectedSetlist`)은 삭제됨. 예습 코스는 30분/1시간/2시간 칩 + 필수/추천/심화 배지·규칙 기반 추천 이유(E7) |
+| 신규 요소 (E1~E12) | 헤더의 **변화 요약 문장**(`event.trendSummary`) · 곡 카드 **추이 배지 ↑/↓** · 적중률 카드의 **F1·Top-5/10 줄** · **"▶ YouTube로 듣기" 버튼**(코스 곡/체크한 곡/상위 N — 팝업 차단 시 폴백 링크) · 하단 **유사 공연 섹션**(셋리스트 접기/펼치기, E11) · **채팅 섹션**(예시 질문 칩, 스트리밍, 출처, E8) |
 | 곡 카드 탭 | `/events/{id}/songs/{songKey}` 이동 (songKey는 URL 인코딩) |
-| 예습 체크 | 원형 체크 버튼(32px, `aria-pressed`). 체크 시 카드 흐림 처리. `localStorage`에 저장, 서버 미전송. 진행률 분모는 보기 모드와 무관하게 rank 상위 N곡 고정 |
+| 예습 체크 | 원형 체크 버튼(32px, `aria-pressed`). 체크 시 카드 흐림 처리. `localStorage`에 저장, 서버 미전송. 진행률 분모는 확률순/예상 순서에선 rank 상위 N곡, **코스 뷰에선 코스 곡** |
 | 접근성 | 체크 버튼은 카드 앵커의 내부가 아닌 형제 요소로 배치 (중첩 인터랙션 방지) |
 
 ### 4.3 상태 처리
@@ -239,7 +240,8 @@ flowchart TD
 
 | 구분 | 내용 |
 |------|------|
-| 조회 API | `GET /api/events/{id}/predictions/{songKey}` (상세+타임라인) · `GET /api/songs/{songKey}/explanation?artistMbid=&songName=` (**SSE**, `EventSource`) |
+| 조회 API | `GET /api/events/{id}/predictions/{songKey}` (상세+근거+타임라인) · `GET /api/artists/{mbid}/songs/{songKey}/stats` (장기 통계 차트) · `GET /api/songs/{songKey}/explanation?artistMbid=` (**SSE**, `EventSource` — 곡명은 서버가 예측 스냅샷에서 읽음) |
+| 신규 요소 (E1·E3·E5) | **신뢰도 배지**(VERY_HIGH~LOW) · **"왜 N%인가" 근거 카드**(단순 등장률/최신성/유형 부스트/유형별 등장/등장 위치 구간) · 타임라인 스트립의 **가중치 농도** · **장기 통계 차트 2종**(연도별 등장률 라인, 투어별 바 — recharts lazy 청크) |
 | SSE 이벤트 | `sources`(출처 목록) → `delta`(텍스트 조각) → `done` / `error`. 오류 시 반드시 `close()`로 자동 재연결 차단 |
 | 세션 캐시 | 같은 곡 재진입 시 모듈 레벨 Map 캐시로 서버 재호출 없음 (LLM 비용 절약) |
 | 외부 링크 | `target=_blank rel=noreferrer`, 아티스트명+곡명 검색 URL 조립 (`lib/links.ts`) |
@@ -273,7 +275,7 @@ flowchart TD
 └───────────────────────┘
 ```
 
-### 6.2 레이아웃 — (B) 콘솔 (카드 5개 세로 스택)
+### 6.2 레이아웃 — (B) 콘솔 (카드 7개 세로 스택 — 아래 다이어그램은 핵심 5개, E9 **AI 사용량(오늘)**·E10 **RAG 저장소** 카드가 배치 실행 아래에 추가됨)
 
 ```
 ┌──────────────────────────────────┐
@@ -306,7 +308,9 @@ flowchart TD
 
 | 섹션 | API | 비고 |
 |------|-----|------|
-| 배치 실행 | `POST /api/admin/batch/collect` · `/predict` · `/rag-ingest` | 결과는 인라인 힌트/에러로 표시 |
+| 배치 실행 | `POST /api/admin/batch/collect` · `/predict` · `/rag-ingest` | 결과는 인라인 힌트/에러로 표시. predict는 실행 중이면 409 |
+| AI 사용량 (E9) | `GET /api/admin/ai-dashboard` | 숫자 카드 4종 + 용도별 표(호출/지연/토큰/캐시/취소/오류), 30초 폴링 |
+| RAG 저장소 (E10) | `GET /api/admin/rag/status` · `/documents` · `DELETE /documents/{id}` · `DELETE /cache/{mbid}` | 아티스트 행 클릭 → 문서 목록 펼침, 문서 삭제 시 설명 캐시 연쇄 무효화 |
 | 내한 감지 | `GET /api/admin/korea-shows` → `POST /api/admin/events` | 이벤트명 "{아티스트} 내한 공연" 자동 조립, showType 승계 |
 | 아티스트 등록 | `GET /api/admin/artists/search?name=` → `POST /api/admin/artists` | 등록 성공 시 수집 배치 자동 트리거 (409 무시) |
 | 이벤트 등록 | `GET /api/admin/artists` (select 옵션) → `POST /api/admin/events` | 공연일 과거 차단은 로컬 날짜 기준 (KST 어긋남 방지) |
@@ -319,9 +323,9 @@ flowchart TD
 | 화면 | 사용 API | 인증 |
 |------|----------|------|
 | SC-01 | `GET /api/events` · `GET /api/events/accuracy` | 없음 |
-| SC-02 | `GET /api/events` · `GET /api/artists/{mbid}` · `GET /api/events/{id}/predictions` · `GET /api/events/{id}/accuracy` | 없음 |
-| SC-03 | `GET /api/events/{id}/predictions/{songKey}` · `GET /api/songs/{songKey}/explanation` (SSE) | 없음 |
-| SC-04 | `/api/admin/**` 11종 (인터페이스 정의서 참조) | Basic |
+| SC-02 | `GET /api/events` · `GET /api/artists/{mbid}` · `GET /api/events/{id}/predictions` · `/accuracy` · `/expected-setlist` · `/similar-shows` · `POST /api/events/{id}/chat` (SSE) · `POST /api/events/{id}/playlist` | 없음 |
+| SC-03 | `GET /api/events/{id}/predictions/{songKey}` · `GET /api/artists/{mbid}/songs/{songKey}/stats` · `GET /api/songs/{songKey}/explanation` (SSE) | 없음 |
+| SC-04 | `/api/admin/**` 14종 (인터페이스 정의서 §4 참조) | Basic |
 
 에러 응답 규약: 백엔드는 RFC 7807 Problem Detail을 반환하며, 클라이언트는 `detail ?? title`을 사용자 메시지로 승격한다 (`api/client.ts` `ApiError`).
 
@@ -333,7 +337,7 @@ flowchart TD
 
 | # | 항목 | 현상 | 방향 |
 |---|------|------|------|
-| 1 | 404 화면 부재 | catch-all 라우트 없음 → 미정의 URL은 빈 본문 | `*` 라우트 + 홈 유도 화면 추가 |
+| 1 | ~~404 화면 부재~~ | **완료** — `App.tsx`의 `*` 라우트 + `NotFound`(홈 유도) | — |
 | 2 | 이벤트 헤더 무음 실패 | SC-02 직접 진입 시 `['events']` 캐시에 없으면 헤더 미표시 | 이벤트 단건 API 신설 또는 목록 선조회 |
 | 3 | 아카이브 무음 실패 | SC-01 성적 조회 실패 시 섹션이 조용히 사라짐 | 인라인 에러 표시 |
 | 4 | 타임라인 빈 상태 부재 | history 빈 배열 시 "0/0회" 그대로 렌더 | 빈 상태 문구 추가 |
