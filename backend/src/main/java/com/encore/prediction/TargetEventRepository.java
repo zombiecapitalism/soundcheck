@@ -2,9 +2,11 @@ package com.encore.prediction;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface TargetEventRepository extends JpaRepository<TargetEvent, Long> {
@@ -21,4 +23,17 @@ public interface TargetEventRepository extends JpaRepository<TargetEvent, Long> 
 
     /** 내한 감지 항목이 이미 이벤트로 등록됐는지 — 유니크 키(artist, date)와 같은 기준. */
     boolean existsByArtist_MbidAndEventDate(UUID artistMbid, LocalDate eventDate);
+
+    /**
+     * 적중률 조회용 — 실제 셋리스트와 그 곡 목록까지 한 번에 로드한다.
+     * inner join이라 미검증(actualSetlist null) 이벤트는 빈 결과다. 웹 계층이 지연 로딩
+     * 트랜잭션 없이 쓸 수 있다(open-in-view 꺼짐).
+     */
+    @Query("""
+            select e from TargetEvent e
+            join fetch e.actualSetlist actual
+            left join fetch actual.songs
+            where e.id = :id
+            """)
+    Optional<TargetEvent> findVerifiedWithActualSongs(@Param("id") Long id);
 }

@@ -1,5 +1,6 @@
 package com.encore.api.admin;
 
+import com.encore.common.KoreaTime;
 import com.encore.prediction.TargetEventRepository;
 import com.encore.setlist.ShowRepository;
 import com.encore.setlist.ShowType;
@@ -8,7 +9,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,8 +19,6 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/admin/korea-shows")
 public class AdminKoreaShowController {
-
-    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final ShowRepository showRepository;
     private final TargetEventRepository targetEventRepository;
@@ -33,7 +31,7 @@ public class AdminKoreaShowController {
 
     @GetMapping
     public List<KoreaShow> upcomingKoreaShows() {
-        return showRepository.findUpcomingKoreaShows(LocalDate.now(KST)).stream()
+        return showRepository.findUpcomingKoreaShows(KoreaTime.today()).stream()
                 .map(show -> new KoreaShow(
                         show.getSetlistId(),
                         show.getArtist().getMbid(),
