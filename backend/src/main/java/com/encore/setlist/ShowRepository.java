@@ -27,6 +27,19 @@ public interface ShowRepository extends JpaRepository<Show, String> {
     /** 적중률 매칭용 — 같은 아티스트·공연일의 수집 공연. 같은 날 두 건이면 호출자가 고른다. */
     List<Show> findByArtist_MbidAndEventDate(UUID artistMbid, LocalDate eventDate);
 
+    /**
+     * 내한 감지 — 수집 대상 아티스트의 한국(KR) 미래 공연. setlist.fm은 공연이 발표되면
+     * 곡 없는 페이지가 먼저 생기므로, 별도 크롤링 없이 수집 데이터만으로 내한이 잡힌다.
+     * 곡 0건이어도 감지 대상이다(예측 표본에서 제외되는 것과 무관).
+     */
+    @Query("""
+            select s from Show s
+            join fetch s.artist
+            where s.countryCode = 'KR' and s.eventDate >= :date
+            order by s.eventDate asc, s.setlistId asc
+            """)
+    List<Show> findUpcomingKoreaShows(@Param("date") LocalDate date);
+
     long countByArtist_Mbid(UUID artistMbid);
 
     long countByArtist_MbidAndShowType(UUID artistMbid, ShowType showType);

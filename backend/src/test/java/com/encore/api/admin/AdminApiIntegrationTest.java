@@ -50,6 +50,8 @@ class AdminApiIntegrationTest {
     @Autowired
     private ArtistRepository artistRepository;
     @Autowired
+    private com.encore.prediction.TargetEventRepository targetEventRepository;
+    @Autowired
     private BatchLock batchLock;
     @Autowired
     private EntityManager entityManager;
@@ -157,6 +159,39 @@ class AdminApiIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("SOLO 또는 FESTIVAL")));
+    }
+
+    /** 내한 감지 — KR 미래 공연만 잡히고, 이미 이벤트로 등록된 것은 플래그로 구분된다. */
+    @Test
+    void detectsUpcomingKoreaShows() throws Exception {
+        Artist artist = artistRepository.saveAndFlush(Artist.builder()
+                .mbid(UUID.randomUUID()).name("Pixies").target(true).build());
+        persistShow(artist, "kr-future", LocalDate.of(2099, 8, 1), "KR", "인천 펜타포트 공원");
+        persistShow(artist, "kr-registered", LocalDate.of(2099, 10, 2), "KR", "삼락생태공원");
+        persistShow(artist, "kr-past", LocalDate.of(2020, 1, 1), "KR", "예전 공연장");
+        persistShow(artist, "us-future", LocalDate.of(2099, 9, 1), "US", "Some Arena");
+        targetEventRepository.saveAndFlush(com.encore.prediction.TargetEvent.builder()
+                .artist(artist).eventName("이미 등록된 내한").eventDate(LocalDate.of(2099, 10, 2))
+                .expectedShowType(com.encore.setlist.ShowType.FESTIVAL).build());
+        entityManager.flush();
+
+        mockMvc.perform(get("/api/admin/korea-shows").with(httpBasic(USER, PASS)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2)) // 과거 KR·미래 US 제외
+                .andExpect(jsonPath("$[0].setlistId").value("kr-future"))
+                .andExpect(jsonPath("$[0].artistName").value("Pixies"))
+                .andExpect(jsonPath("$[0].venueName").value("인천 펜타포트 공원"))
+                .andExpect(jsonPath("$[0].alreadyRegistered").value(false))
+                .andExpect(jsonPath("$[1].setlistId").value("kr-registered"))
+                .andExpect(jsonPath("$[1].alreadyRegistered").value(true));
+    }
+
+    private void persistShow(Artist artist, String id, LocalDate date, String countryCode, String venue) {
+        entityManager.persist(Show.builder()
+                .setlistId(id).versionId("v1").artist(artist).eventDate(date)
+                .venueName(venue).countryCode(countryCode)
+                .showType(ShowType.UNKNOWN).rawJson("{}")
+                .build());
     }
 
     @Test

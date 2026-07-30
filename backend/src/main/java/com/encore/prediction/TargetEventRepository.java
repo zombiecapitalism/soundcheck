@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 public interface TargetEventRepository extends JpaRepository<TargetEvent, Long> {
 
@@ -17,4 +18,7 @@ public interface TargetEventRepository extends JpaRepository<TargetEvent, Long> 
 
     /** 공연이 끝났는데 아직 실제 셋리스트가 연결되지 않은 이벤트 — 적중률 매칭 대상. */
     List<TargetEvent> findByEventDateBeforeAndActualSetlistIsNull(LocalDate date);
+
+    /** 내한 감지 항목이 이미 이벤트로 등록됐는지 — 유니크 키(artist, date)와 같은 기준. */
+    boolean existsByArtist_MbidAndEventDate(UUID artistMbid, LocalDate eventDate);
 }
