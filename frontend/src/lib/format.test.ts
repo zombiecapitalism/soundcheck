@@ -1,14 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import {
+  boostEffectText,
   buildExpectedSetlist,
+  confidenceText,
   dDayText,
   evidenceText,
   expectedSetSize,
   formatEventDate,
   formatPercent,
   isEncoreStaple,
+  positionSegments,
   positionText,
   songRoleLabels,
+  trendBadge,
+  typeBreakdownText,
 } from './format'
 import { listenLinks } from './links'
 import { practiceProgress, toggleKey } from './practice'
@@ -194,5 +199,66 @@ describe('dDayText', () => {
   it('당일은 D-DAY, 지난 공연은 종료로 표기한다', () => {
     expect(dDayText('2026-07-30', today)).toBe('D-DAY')
     expect(dDayText('2026-07-29', today)).toBe('공연 종료')
+  })
+})
+
+describe('confidenceText', () => {
+  it('신뢰도 라벨을 한국어 문구로 바꾼다', () => {
+    expect(confidenceText('VERY_HIGH')).toBe('신뢰도 매우 높음')
+    expect(confidenceText('LOW')).toBe('신뢰도 낮음')
+  })
+})
+
+describe('trendBadge', () => {
+  it('상승·하락만 배지를 만들고 STABLE·null은 만들지 않는다', () => {
+    expect(trendBadge('RISING')).toEqual({ arrow: '↑', label: '최근 상승' })
+    expect(trendBadge('FALLING')).toEqual({ arrow: '↓', label: '최근 하락' })
+    expect(trendBadge('STABLE')).toBeNull()
+    expect(trendBadge(null)).toBeNull()
+  })
+})
+
+describe('positionSegments', () => {
+  it('등장한 구간만 백분율로 만든다 — 분모는 곡의 등장 공연 수', () => {
+    const segments = positionSegments({ opener: 0, early: 1, mid: 2, late: 4, encore: 1 }, 8)
+    expect(segments).toEqual([
+      { label: '초반', percent: 13 },
+      { label: '중반', percent: 25 },
+      { label: '후반', percent: 50 },
+      { label: '앙코르', percent: 13 },
+    ])
+  })
+
+  it('등장 0회면 빈 배열 — 0으로 나누지 않는다', () => {
+    expect(positionSegments({ opener: 0, early: 0, mid: 0, late: 0, encore: 0 }, 0)).toEqual([])
+  })
+})
+
+describe('typeBreakdownText', () => {
+  it('표본에 있는 유형만 표기한다', () => {
+    expect(
+      typeBreakdownText({ festivalShows: 12, festivalPlayed: 9, soloShows: 5, soloPlayed: 2 }),
+    ).toBe('페스티벌 12회 중 9회 · 단독 5회 중 2회')
+    expect(
+      typeBreakdownText({ festivalShows: 12, festivalPlayed: 9, soloShows: 0, soloPlayed: 0 }),
+    ).toBe('페스티벌 12회 중 9회')
+  })
+
+  it('전부 UNKNOWN 표본이면 null — 섹션 자체를 그리지 않는다', () => {
+    expect(
+      typeBreakdownText({ festivalShows: 0, festivalPlayed: 0, soloShows: 0, soloPlayed: 0 }),
+    ).toBeNull()
+  })
+})
+
+describe('boostEffectText', () => {
+  it('퍼센트포인트로 부호와 함께 표기한다', () => {
+    expect(boostEffectText(0.042)).toBe('+4%p')
+    expect(boostEffectText(-0.03)).toBe('-3%p')
+  })
+
+  it('효과가 없거나(반올림 0) 데이터가 없으면 null', () => {
+    expect(boostEffectText(0.001)).toBeNull()
+    expect(boostEffectText(null)).toBeNull()
   })
 })

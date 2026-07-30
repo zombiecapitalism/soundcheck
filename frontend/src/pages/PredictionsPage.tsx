@@ -13,6 +13,7 @@ import {
   formatPercent,
   isEncoreStaple,
   positionText,
+  trendBadge,
 } from '../lib/format'
 
 /** 예측 상세 — 곡별 확률 리스트. 각 항목에 F5 근거("최근 20회 중 19회 연주")를 함께 표기한다. */
@@ -140,6 +141,7 @@ export default function PredictionsPage() {
               const position = positionText(prediction.avgPosition)
               const played = playedByKey.get(prediction.songKey)
               const practiced = checkedKeys.has(prediction.songKey)
+              const trend = trendBadge(prediction.trend)
               return (
                 // 체크 버튼은 링크의 형제다 — 앵커 안에 인터랙티브 요소를 두면 HTML 비준수
                 <li
@@ -156,6 +158,14 @@ export default function PredictionsPage() {
                       </span>
                       <span className="prediction-song">
                         {prediction.songName}
+                        {trend && (
+                          <span
+                            className={`trend-badge ${prediction.trend === 'RISING' ? 'up' : 'down'}`}
+                            title={trend.label}
+                          >
+                            {trend.arrow}
+                          </span>
+                        )}
                         {played === true && <span className="hit-badge">적중</span>}
                         {played === false && <span className="miss-badge">미연주</span>}
                       </span>

@@ -922,3 +922,109 @@ select:focus {
   color: var(--accent);
   font-variant-numeric: tabular-nums;
 }
+
+/* 예측 근거 카드 (E1) */
+.evidence-card {
+  margin-bottom: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.evidence-card h2 {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+
+.evidence-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.evidence-list li {
+  display: flex;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.evidence-list li:last-child {
+  border-bottom: none;
+}
+
+.evidence-term {
+  flex-shrink: 0;
+  width: 84px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.evidence-value {
+  min-width: 0;
+}
+
+.position-stats {
+  display: flex;
+  gap: 10px;
+  padding-top: 8px;
+  font-size: 13px;
+}
+
+.position-segments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.position-segment {
+  font-weight: 600;
+  background: var(--track);
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+
+/* 신뢰도 라벨 (E1) */
+.confidence-badge {
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.confidence-very_high {
+  color: #81c995;
+  background: rgba(129, 201, 149, 0.14);
+}
+
+.confidence-high {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.confidence-medium {
+  color: var(--text-muted);
+  background: var(--track);
+}
+
+.confidence-low {
+  color: #f28b82;
+  background: rgba(242, 139, 130, 0.14);
+}
+
+/* 추이 배지 (E4) */
+.trend-badge {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.trend-badge.up {
+  color: #81c995;
+}
+
+.trend-badge.down {
+  color: #f28b82;
+}

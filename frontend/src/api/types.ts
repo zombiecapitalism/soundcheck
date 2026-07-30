@@ -16,6 +16,9 @@ export interface EventSummary {
   }
 }
 
+/** 표본 최근 절반 vs 이전 절반 등장률 변화 (E4). */
+export type Trend = 'RISING' | 'STABLE' | 'FALLING'
+
 export interface Prediction {
   rank: number
   songKey: string
@@ -25,6 +28,9 @@ export interface Prediction {
   sampleSize: number
   avgPosition: number | null
   encoreRatio: number | null
+  /** 최근 5회 공연 중 등장 횟수 — v0.2 이전 스냅샷이면 null */
+  recentCount5: number | null
+  trend: Trend | null
 }
 
 export interface ArtistDetail {
@@ -40,9 +46,45 @@ export interface ArtistDetail {
   }
 }
 
+/** 예측 신뢰도 라벨 — 표본 크기 × 확률 규칙 (E1). */
+export type Confidence = 'VERY_HIGH' | 'HIGH' | 'MEDIUM' | 'LOW'
+
+/** 셋리스트 내 위치 구간별 등장 횟수 — 합계 = playedCount (E3). */
+export interface PositionStats {
+  opener: number
+  early: number
+  mid: number
+  late: number
+  encore: number
+}
+
+/** 표본 내 공연 유형별 공연 수와 등장 횟수 — UNKNOWN 제외 (E4). */
+export interface TypeBreakdown {
+  festivalShows: number
+  festivalPlayed: number
+  soloShows: number
+  soloPlayed: number
+}
+
+/** "왜 이 확률인가" — 등장률 × 최신성 × 유형 부스트 분해 (E1). */
+export interface EvidenceBlock {
+  baseFrequency: number
+  weightedScore: number
+  totalWeight: number
+  recencyDecay: number
+  matchingShowTypeBoost: number
+  /** 유형 부스트가 확률에 기여한 정도(%p 아님, 0..1 차이). 구버전 스냅샷이면 null */
+  boostEffect: number | null
+  positionStats: PositionStats | null
+  typeBreakdown: TypeBreakdown | null
+}
+
 /** 곡 상세 — 예측 근거 + 최근 공연 타임라인(연주/미연주 포함, 최근순). */
 export interface PredictionDetail {
   prediction: Prediction
+  confidence: Confidence
+  /** v0.2 이전 스냅샷(evidence 미저장)이면 null */
+  evidence: EvidenceBlock | null
   history: {
     setlistId: string
     eventDate: string
@@ -53,6 +95,8 @@ export interface PredictionDetail {
     played: boolean
     position: number | null
     encore: boolean | null
+    /** 이 공연이 확률 계산에 기여한 가중치 — 미연주면 null */
+    weight: number | null
   }[]
 }
 

@@ -3,11 +3,16 @@ import { useEvent, usePredictionDetail } from '../api/queries'
 import StatusView from '../components/StatusView'
 import { useSongStory } from '../hooks/useSongStory'
 import {
+  boostEffectText,
+  confidenceText,
   evidenceText,
   formatEventDate,
   formatPercent,
+  positionSegments,
   positionText,
   songRoleLabels,
+  trendBadge,
+  typeBreakdownText,
 } from '../lib/format'
 import { listenLinks } from '../lib/links'
 
@@ -46,10 +51,13 @@ export default function SongPage() {
     )
   }
 
-  const { prediction, history } = data
+  const { prediction, confidence, evidence, history } = data
   const position = positionText(prediction.avgPosition)
   const labels = songRoleLabels(prediction)
   const playedCount = history.filter((entry) => entry.played).length
+  const trend = trendBadge(prediction.trend)
+  // 타임라인 막대의 상대 농도 — 가중치가 가장 큰 공연을 1로 정규화
+  const maxWeight = Math.max(...history.map((entry) => entry.weight ?? 0), 0)
 
   return (
     <>
@@ -63,15 +71,22 @@ export default function SongPage() {
           {evidenceText(prediction.playedCount, prediction.sampleSize)}
           {position && <> · {position}</>}
         </p>
-        {labels.length > 0 && (
-          <p className="song-labels">
-            {labels.map((label) => (
-              <span key={label} className="role-badge">
-                {label}
-              </span>
-            ))}
-          </p>
-        )}
+        {/* 신뢰도는 항상 있으므로 라벨 줄은 항상 그린다 */}
+        <p className="song-labels">
+          <span className={`confidence-badge confidence-${confidence.toLowerCase()}`}>
+            {confidenceText(confidence)}
+          </span>
+          {trend && (
+            <span className="role-badge">
+              {trend.arrow} {trend.label}
+            </span>
+          )}
+          {labels.map((label) => (
+            <span key={label} className="role-badge">
+              {label}
+            </span>
+          ))}
+        </p>
         {event && (
           <div className="listen-links">
             {listenLinks(event.artist.name, prediction.songName).map((link) => (
@@ -89,6 +104,55 @@ export default function SongPage() {
         )}
       </header>
 
+      {evidence && (
+        <section className="evidence-card">
+          <h2>왜 {formatPercent(prediction.probability)}인가</h2>
+          <ul className="evidence-list">
+            <li>
+              <span className="evidence-term">단순 등장률</span>
+              <span className="evidence-value">
+                {formatPercent(evidence.baseFrequency)} ({prediction.playedCount}/
+                {prediction.sampleSize}회)
+              </span>
+            </li>
+            <li>
+              <span className="evidence-term">최신성 가중</span>
+              <span className="evidence-value">
+                최근 공연일수록 가중 (감쇠 {evidence.recencyDecay})
+                {prediction.recentCount5 != null && <> · 최근 5회 중 {prediction.recentCount5}회</>}
+              </span>
+            </li>
+            {boostEffectText(evidence.boostEffect) && (
+              <li>
+                <span className="evidence-term">유형 부스트</span>
+                <span className="evidence-value">
+                  같은 유형 공연 ×{evidence.matchingShowTypeBoost} →{' '}
+                  {boostEffectText(evidence.boostEffect)}
+                </span>
+              </li>
+            )}
+            {evidence.typeBreakdown && typeBreakdownText(evidence.typeBreakdown) && (
+              <li>
+                <span className="evidence-term">유형별 등장</span>
+                <span className="evidence-value">{typeBreakdownText(evidence.typeBreakdown)}</span>
+              </li>
+            )}
+          </ul>
+          {evidence.positionStats && prediction.playedCount > 0 && (
+            <div className="position-stats">
+              <span className="evidence-term">등장 위치</span>
+              <div className="position-segments">
+                {positionSegments(evidence.positionStats, prediction.playedCount).map((segment) => (
+                  <span key={segment.label} className="position-segment">
+                    {segment.label} {segment.percent}%
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
       <section className="timeline-section">
         <h2>
           최근 공연 타임라인
@@ -96,12 +160,17 @@ export default function SongPage() {
             {playedCount}/{history.length}회 연주
           </span>
         </h2>
-        {/* 한눈에 보는 연주 밀도 — 최근(왼쪽)부터 */}
+        {/* 한눈에 보는 연주 밀도 — 최근(왼쪽)부터. 농도 = 계산 기여 가중치(E1) */}
         <div className="play-strip" aria-hidden="true">
           {history.map((entry) => (
             <span
               key={entry.setlistId}
               className={entry.played ? 'strip-cell played' : 'strip-cell'}
+              style={
+                entry.played && entry.weight != null && maxWeight > 0
+                  ? { opacity: 0.35 + 0.65 * (entry.weight / maxWeight) }
+                  : undefined
+              }
             />
           ))}
         </div>

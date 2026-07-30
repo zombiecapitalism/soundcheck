@@ -214,7 +214,11 @@ class ApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.history.length()").value(2)) // 공연일 이후(cut-after) 제외
                 .andExpect(jsonPath("$.history[0].setlistId").value("cut-on"))
-                .andExpect(jsonPath("$.history[1].setlistId").value("cut-before"));
+                .andExpect(jsonPath("$.history[1].setlistId").value("cut-before"))
+                // evidence 없이 저장된 스냅샷: 근거 블록은 null, 신뢰도는 표본 5회 < 8 → LOW
+                .andExpect(jsonPath("$.confidence").value("LOW"))
+                .andExpect(jsonPath("$.evidence").value(nullValue()))
+                .andExpect(jsonPath("$.prediction.trend").value(nullValue()));
     }
 
     /** 공연 후: 실제 셋리스트가 연결된 이벤트는 verified=true + 적중률 조회가 가능해야 한다. */

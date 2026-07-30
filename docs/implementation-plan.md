@@ -43,7 +43,11 @@
 
 ### E4(수치부). 변화 분석 — 최근 5회·추이·유형별 차이
 
-- **Backend**: 역시 evidence의 `appearances[]`(최근순, 미등장 공연 포함 표본)에서 파생:
+> 구현 노트: `appearances[]`에는 곡이 **연주된 공연만** 들어 있어(미등장 공연 없음) evidence 파싱만으로는
+> 아래 수치를 만들 수 없었다. 대신 `PredictionCalculator`가 표본 전체를 입력으로 받으므로
+> 계산 시점에 파생해 evidence에 저장하는 방식으로 구현했다(E3도 동일). 구 스냅샷은 해당 필드 null.
+
+- **Backend**: 표본 전체(미등장 공연 포함)에서 파생:
   - `recentCount5`: 최근 5회 공연 중 등장 횟수
   - `trend`: 표본 전반 10회 vs 후반 10회 등장률 차 → RISING / STABLE / FALLING
   - `festivalRate` vs `soloRate`: 표본 내 show_type별 등장률 (UNKNOWN은 제외하고 분모 표기)

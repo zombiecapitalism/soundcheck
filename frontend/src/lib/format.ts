@@ -1,5 +1,7 @@
 // 화면 표기용 순수 함수 — 컴포넌트와 분리해서 단위 테스트한다.
 
+import type { Confidence, PositionStats, Trend, TypeBreakdown } from '../api/types'
+
 /** 0..1 확률 → "95%" (반올림, 0~100 클램프). */
 export function formatPercent(probability: number): string {
   const percent = Math.round(Math.min(1, Math.max(0, probability)) * 100)
@@ -92,6 +94,74 @@ export function buildExpectedSetlist<
       const posB = b.avgPosition ?? Number.POSITIVE_INFINITY
       return posA !== posB ? posA - posB : a.rank - b.rank
     })
+}
+
+/** 신뢰도 라벨 → 화면 문구 (E1). */
+export function confidenceText(confidence: Confidence): string {
+  return {
+    VERY_HIGH: '신뢰도 매우 높음',
+    HIGH: '신뢰도 높음',
+    MEDIUM: '신뢰도 보통',
+    LOW: '신뢰도 낮음',
+  }[confidence]
+}
+
+/** 추이 배지 (E4) — STABLE·null은 배지를 만들지 않는다. */
+export function trendBadge(trend: Trend | null): { arrow: string; label: string } | null {
+  if (trend === 'RISING') {
+    return { arrow: '↑', label: '최근 상승' }
+  }
+  if (trend === 'FALLING') {
+    return { arrow: '↓', label: '최근 하락' }
+  }
+  return null
+}
+
+/**
+ * 위치 구간 비율 (E3) — 분모는 곡이 등장한 공연 수. 등장 0회 구간은 표기에서 뺀다.
+ * 반올림 백분율이라 합이 100이 아닐 수 있다(표기용).
+ */
+export function positionSegments(
+  stats: PositionStats,
+  playedCount: number,
+): { label: string; percent: number }[] {
+  if (playedCount <= 0) {
+    return []
+  }
+  const entries: [string, number][] = [
+    ['오프너', stats.opener],
+    ['초반', stats.early],
+    ['중반', stats.mid],
+    ['후반', stats.late],
+    ['앙코르', stats.encore],
+  ]
+  return entries
+    .filter(([, count]) => count > 0)
+    .map(([label, count]) => ({ label, percent: Math.round((count / playedCount) * 100) }))
+}
+
+/** 유형별 등장 표기 (E4) — 표본에 없는 유형(분모 0)은 생략, 둘 다 없으면 null. */
+export function typeBreakdownText(breakdown: TypeBreakdown): string | null {
+  const parts: string[] = []
+  if (breakdown.festivalShows > 0) {
+    parts.push(`페스티벌 ${breakdown.festivalShows}회 중 ${breakdown.festivalPlayed}회`)
+  }
+  if (breakdown.soloShows > 0) {
+    parts.push(`단독 ${breakdown.soloShows}회 중 ${breakdown.soloPlayed}회`)
+  }
+  return parts.length > 0 ? parts.join(' · ') : null
+}
+
+/** 유형 부스트가 확률에 기여한 정도 → "+4%p" (E1). 반올림해 0이면 표기하지 않는다(null). */
+export function boostEffectText(boostEffect: number | null): string | null {
+  if (boostEffect == null) {
+    return null
+  }
+  const points = Math.round(boostEffect * 100)
+  if (points === 0) {
+    return null
+  }
+  return `${points > 0 ? '+' : ''}${points}%p`
 }
 
 /** 공연까지 남은 날: "D-64" / "D-DAY" / 지났으면 "공연 종료". */
