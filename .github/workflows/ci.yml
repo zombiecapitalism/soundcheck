@@ -9,6 +9,11 @@ on:
     branches: [main, master]
   pull_request:
 
+# 연속 푸시 시 이전 실행을 취소한다 — 러너 시간 낭비 방지
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend:
     runs-on: ubuntu-latest

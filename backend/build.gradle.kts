@@ -52,3 +52,8 @@ dependencies {
 tasks.withType<Test> {
 	useJUnitPlatform()
 }
+
+// Dockerfile이 정확한 파일명을 COPY한다 — plain jar가 생겨도 글롭이 깨지지 않게 고정
+tasks.bootJar {
+	archiveFileName.set("app.jar")
+}

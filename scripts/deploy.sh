@@ -4,6 +4,9 @@
 set -eu
 cd "$(dirname "$0")/.."
 
+# 최신 코드로 갱신 — 로컬 수정이 있으면 실패한다(서버에서 직접 고치지 말 것)
+git pull --ff-only
+
 docker compose --env-file .env -f docker-compose.prod.yml build
 docker compose --env-file .env -f docker-compose.prod.yml up -d
 # 이전 버전의 dangling 이미지 정리
