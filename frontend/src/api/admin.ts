@@ -84,8 +84,21 @@ export interface CreateEventRequest {
   expectedShowType: ShowType
 }
 
+/** 수집 데이터에서 감지한 KR 미래 공연 — 수집 대상 아티스트의 내한만 잡힌다. */
+export interface KoreaShow {
+  setlistId: string
+  artistMbid: string
+  artistName: string
+  eventDate: string
+  venueName: string | null
+  cityName: string | null
+  showType: ShowType
+  alreadyRegistered: boolean
+}
+
 export const adminApi = {
   logs: () => adminRequest<LogsResponse>('/api/admin/logs'),
+  koreaShows: () => adminRequest<KoreaShow[]>('/api/admin/korea-shows'),
   searchArtists: (name: string) =>
     adminRequest<ArtistCandidate[]>(`/api/admin/artists/search?name=${encodeURIComponent(name)}`),
   registeredArtists: () => adminRequest<RegisteredArtist[]>('/api/admin/artists'),

@@ -8,8 +8,10 @@ import {
   hasAdminAuth,
   saveAdminAuth,
   type ArtistCandidate,
+  type KoreaShow,
 } from '../api/admin'
 import type { ShowType } from '../api/types'
+import { formatEventDate } from '../lib/format'
 
 /**
  * 관리자 콘솔 — 내한 소식을 들은 관리자가 SQL 없이 아티스트·이벤트를 등록하고
@@ -102,6 +104,7 @@ function AdminConsole({ onAuthExpired }: { onAuthExpired: () => void }) {
         </button>
       </div>
       <BatchSection collecting={logsQuery.data?.collecting ?? false} onDone={invalidate} />
+      <KoreaShowSection onRegistered={invalidate} />
       <ArtistSection onRegistered={invalidate} />
       <EventSection onCreated={invalidate} />
       <LogsSection
@@ -141,6 +144,72 @@ function BatchSection({ collecting, onDone }: { collecting: boolean; onDone: () 
       {collect.error && <p className="form-error">{collect.error.message}</p>}
       {predict.isSuccess && <p className="form-hint">예측 완료 — 이벤트 {predict.data.length}건 처리</p>}
       {predict.error && <p className="form-error">{predict.error.message}</p>}
+    </section>
+  )
+}
+
+/**
+ * 내한 자동 감지 — 별도 크롤링 없이 수집 데이터의 KR 미래 공연을 보여준다.
+ * setlist.fm은 공연 발표 시 곡 없는 페이지가 먼저 생기므로 수집만 돌면 잡힌다.
+ */
+function KoreaShowSection({ onRegistered }: { onRegistered: () => void }) {
+  const shows = useQuery({ queryKey: ['admin', 'korea-shows'], queryFn: adminApi.koreaShows })
+  const register = useMutation({
+    mutationFn: (show: KoreaShow) =>
+      adminApi.createEvent({
+        artistMbid: show.artistMbid,
+        eventName: show.venueName ?? `${show.artistName} 내한 공연`,
+        eventDate: show.eventDate,
+        venueName: show.venueName,
+        // 수집 시 페스티벌로 판정된 공연은 페스티벌 셋으로 예측한다
+        expectedShowType: show.showType === 'FESTIVAL' ? 'FESTIVAL' : 'SOLO',
+      }),
+    onSuccess: onRegistered,
+  })
+
+  return (
+    <section className="admin-section">
+      <h2>내한 감지</h2>
+      {shows.isPending && <p className="form-hint">확인 중…</p>}
+      {shows.data && shows.data.length === 0 && (
+        <p className="form-hint">
+          감지된 내한 일정이 없어요. 수집 대상 아티스트의 한국 공연이 setlist.fm에
+          등록되면 다음 수집 때 여기에 표시됩니다.
+        </p>
+      )}
+      {shows.data && shows.data.length > 0 && (
+        <ul className="candidate-list">
+          {shows.data.map((show) => (
+            <li key={show.setlistId} className="candidate-item">
+              <div className="candidate-info">
+                <strong>{show.artistName}</strong>
+                <span className="candidate-hint">
+                  {' — '}
+                  {formatEventDate(show.eventDate)}
+                  {show.venueName && ` · ${show.venueName}`}
+                  {show.cityName && ` (${show.cityName})`}
+                  {show.showType === 'FESTIVAL' && ' · 페스티벌'}
+                </span>
+              </div>
+              {show.alreadyRegistered ? (
+                <span className="candidate-registered">등록됨</span>
+              ) : (
+                <button
+                  type="button"
+                  className="primary-button small"
+                  disabled={register.isPending}
+                  onClick={() => register.mutate(show)}
+                >
+                  이벤트로 등록
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {register.isSuccess && <p className="form-hint">등록 완료 — 예측까지 계산됐어요.</p>}
+      {register.error && <p className="form-error">{register.error.message}</p>}
+      {shows.error && <p className="form-error">{shows.error.message}</p>}
     </section>
   )
 }
