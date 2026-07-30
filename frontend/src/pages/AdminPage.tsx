@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError } from '../api/client'
@@ -77,11 +77,15 @@ function AdminConsole({ onAuthExpired }: { onAuthExpired: () => void }) {
     refetchInterval: (query) => (query.state.data?.collecting ? 3000 : 15000),
   })
 
-  // 401이면 세션이 끊긴 것 — 로그인 게이트로 되돌린다
-  if (logsQuery.error instanceof ApiError && logsQuery.error.status === 401) {
-    clearAdminAuth()
-    onAuthExpired()
-  }
+  // 401이면 세션이 끊긴 것 — 로그인 게이트로 되돌린다.
+  // 렌더 중 부모 setState는 React 규칙 위반이므로 반드시 effect에서 처리한다.
+  const authExpired = logsQuery.error instanceof ApiError && logsQuery.error.status === 401
+  useEffect(() => {
+    if (authExpired) {
+      clearAdminAuth()
+      onAuthExpired()
+    }
+  }, [authExpired, onAuthExpired])
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['admin'] })

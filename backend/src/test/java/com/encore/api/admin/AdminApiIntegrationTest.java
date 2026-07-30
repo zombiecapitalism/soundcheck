@@ -59,12 +59,22 @@ class AdminApiIntegrationTest {
     @MockitoBean
     private SetlistFmClient setlistFmClient;
 
+    /**
+     * 401은 Problem Detail이어야 하고 WWW-Authenticate 헤더가 없어야 한다 —
+     * 이 헤더가 있으면 Chrome이 네이티브 로그인 팝업으로 SPA를 블로킹한다(실측).
+     */
     @Test
     void adminEndpointsRequireAuthentication() throws Exception {
-        mockMvc.perform(get("/api/admin/logs")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/admin/logs"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().doesNotExist("WWW-Authenticate"))
+                .andExpect(header().string("Content-Type",
+                        org.hamcrest.Matchers.containsString("application/problem+json")))
+                .andExpect(jsonPath("$.status").value(401));
         mockMvc.perform(post("/api/admin/batch/collect")).andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/admin/logs").with(httpBasic(USER, "wrong-password")))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().doesNotExist("WWW-Authenticate"));
     }
 
     /** 조회 API는 인증 없이 열려 있어야 한다 — 보안 도입이 공개 API를 잠그면 안 된다. */
