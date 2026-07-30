@@ -7,7 +7,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.http.HttpStatus;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -47,31 +46,49 @@ public class AdminArtistController {
     @GetMapping("/search")
     public List<ArtistCandidate> search(@RequestParam String name) {
         return setlistFmClient.searchArtists(name).artist().stream()
-                .map(dto -> new ArtistCandidate(
-                        dto.mbid(), dto.name(), dto.sortName(), dto.disambiguation(), dto.url(),
-                        dto.mbid() != null && artistRepository.existsById(UUID.fromString(dto.mbid()))))
+                .map(dto -> {
+                    UUID mbid = parseMbidOrNull(dto.mbid());
+                    return new ArtistCandidate(
+                            dto.mbid(), dto.name(), dto.sortName(), dto.disambiguation(), dto.url(),
+                            mbid != null && artistRepository.existsById(mbid));
+                })
                 .toList();
     }
 
-    /** 후보를 수집 대상으로 등록한다. 이미 있으면 표기 정보를 갱신하고 대상으로만 되돌린다. */
+    /** 후보 하나의 mbid가 이상해도 검색 전체가 죽으면 안 된다 — 그 후보만 미등록으로 표시. */
+    private static UUID parseMbidOrNull(String mbid) {
+        if (mbid == null) {
+            return null;
+        }
+        try {
+            return UUID.fromString(mbid);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    /**
+     * 후보를 수집 대상으로 등록한다. 이미 있으면 표기 정보를 갱신하고 대상으로만 되돌린다.
+     * 웹 계층에 트랜잭션을 두지 않는다 — 갱신도 더티 체킹 대신 명시적 save(merge)로 반영한다.
+     */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Transactional
     public RegisteredArtist register(@Valid @RequestBody RegisterArtistRequest request) {
         Artist artist = artistRepository.findById(request.mbid()).orElse(null);
         if (artist == null) {
-            artist = artistRepository.save(Artist.builder()
+            artist = Artist.builder()
                     .mbid(request.mbid())
                     .name(request.name())
                     .sortName(request.sortName())
                     .setlistFmUrl(request.setlistFmUrl())
                     .target(true)
-                    .build());
+                    .build();
         } else {
             artist.updateProfile(request.name(), request.sortName(), request.setlistFmUrl());
             artist.markAsCollectionTarget();
         }
-        return new RegisteredArtist(artist.getMbid(), artist.getName(), artist.isTarget());
+        Artist saved = artistRepository.save(artist);
+        return new RegisteredArtist(saved.getMbid(), saved.getName(), saved.isTarget());
     }
 
     public record ArtistCandidate(String mbid, String name, String sortName, String disambiguation,

@@ -45,7 +45,13 @@ public class AdminBatchService {
         if (!batchLock.tryAcquireCollect()) {
             return false;
         }
-        taskExecutor.submit(this::runCollection);
+        try {
+            taskExecutor.submit(this::runCollection);
+        } catch (RuntimeException e) {
+            // 제출 자체가 실패하면(executor 종료 등) 락이 영구히 잠기므로 반드시 되돌린다
+            batchLock.releaseCollect();
+            throw e;
+        }
         return true;
     }
 
