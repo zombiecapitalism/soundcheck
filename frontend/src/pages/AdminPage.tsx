@@ -162,7 +162,8 @@ function KoreaShowSection({ onRegistered }: { onRegistered: () => void }) {
     mutationFn: (show: KoreaShow) =>
       adminApi.createEvent({
         artistMbid: show.artistMbid,
-        eventName: show.venueName ?? `${show.artistName} 내한 공연`,
+        // 공연장명을 이벤트명으로 쓰면 메인 카드에서 장소와 중복돼 어색하다(실사용 확인)
+        eventName: `${show.artistName} 내한 공연`,
         eventDate: show.eventDate,
         venueName: show.venueName,
         // 수집 시 페스티벌로 판정된 공연은 페스티벌 셋으로 예측한다
