@@ -1,16 +1,21 @@
 import { Link, useParams } from 'react-router'
-import { usePredictions } from '../api/queries'
+import { usePredictionDetail } from '../api/queries'
 import StatusView from '../components/StatusView'
-import { evidenceText, formatPercent, isEncoreStaple, positionText } from '../lib/format'
+import {
+  evidenceText,
+  formatEventDate,
+  formatPercent,
+  positionText,
+  songRoleLabels,
+} from '../lib/format'
 
-/** 곡 상세 — RAG(F4)가 붙기 전까지는 예측 근거 요약 + 플레이스홀더. */
+/** 곡 상세 — 예측 근거를 최근 공연 타임라인으로 풀어 보여준다. RAG(F4)는 아래 플레이스홀더에 연결 예정. */
 export default function SongPage() {
   const params = useParams()
   const eventId = Number(params.eventId)
-  // react-router가 params를 이미 디코드해서 준다 — 여기서 또 디코드하면 이중 디코드다
+  // react-router가 params를 이미 디코드해서 준다
   const songKey = params.songKey ?? ''
-  // 예측 목록 캐시에서 곡을 고른다 — 상세 화면 전용 API가 아직 없다
-  const { data: predictions, isPending, isError, error, refetch } = usePredictions(eventId)
+  const { data, isPending, isError, error, refetch } = usePredictionDetail(eventId, songKey)
 
   // id가 숫자가 아니면 쿼리가 시작되지 않아 isPending이 영원히 true다
   if (!Number.isFinite(eventId)) {
@@ -28,29 +33,92 @@ export default function SongPage() {
     return <StatusView kind="loading" message="곡 정보를 불러오는 중…" />
   }
   if (isError) {
-    return <StatusView kind="error" message={error.message} onRetry={() => refetch()} />
+    return (
+      <>
+        <Link to={`/events/${eventId}`} className="back-link">
+          ← 예측 목록
+        </Link>
+        <StatusView kind="error" message={error.message} onRetry={() => refetch()} />
+      </>
+    )
   }
 
-  const song = predictions.find((prediction) => prediction.songKey === songKey)
-  if (!song) {
-    return <StatusView kind="empty" message="곡을 찾을 수 없어요." />
-  }
+  const { prediction, history } = data
+  const position = positionText(prediction.avgPosition)
+  const labels = songRoleLabels(prediction)
+  const playedCount = history.filter((entry) => entry.played).length
 
-  const position = positionText(song.avgPosition)
   return (
     <>
       <Link to={`/events/${eventId}`} className="back-link">
         ← 예측 목록
       </Link>
       <header className="song-header">
-        <h1 className="page-title">{song.songName}</h1>
+        <h1 className="page-title">{prediction.songName}</h1>
         <p className="song-summary">
-          연주 확률 <strong>{formatPercent(song.probability)}</strong> ·{' '}
-          {evidenceText(song.playedCount, song.sampleSize)}
+          연주 확률 <strong>{formatPercent(prediction.probability)}</strong> ·{' '}
+          {evidenceText(prediction.playedCount, prediction.sampleSize)}
           {position && <> · {position}</>}
-          {isEncoreStaple(song.encoreRatio) && <span className="encore-badge">앙코르 단골</span>}
         </p>
+        {labels.length > 0 && (
+          <p className="song-labels">
+            {labels.map((label) => (
+              <span key={label} className="role-badge">
+                {label}
+              </span>
+            ))}
+          </p>
+        )}
       </header>
+
+      <section className="timeline-section">
+        <h2>
+          최근 공연 타임라인
+          <span className="timeline-count">
+            {playedCount}/{history.length}회 연주
+          </span>
+        </h2>
+        {/* 한눈에 보는 연주 밀도 — 최근(왼쪽)부터 */}
+        <div className="play-strip" aria-hidden="true">
+          {history.map((entry) => (
+            <span
+              key={entry.setlistId}
+              className={entry.played ? 'strip-cell played' : 'strip-cell'}
+            />
+          ))}
+        </div>
+        <ol className="timeline-list">
+          {history.map((entry) => (
+            <li
+              key={entry.setlistId}
+              className={entry.played ? 'timeline-item played' : 'timeline-item'}
+            >
+              <span className="timeline-dot" aria-hidden="true" />
+              <div className="timeline-body">
+                <div className="timeline-top">
+                  <span className="timeline-date">{formatEventDate(entry.eventDate)}</span>
+                  {entry.showType === 'FESTIVAL' && <span className="festival-tag">페스티벌</span>}
+                </div>
+                <div className="timeline-venue">
+                  {entry.venueName ?? '공연장 미상'}
+                  {entry.cityName && ` · ${entry.cityName}`}
+                </div>
+                <div className="timeline-result">
+                  {entry.played ? (
+                    <>
+                      {entry.playedSongCount}곡 중 {entry.position}번째
+                      {entry.encore && <span className="encore-badge">앙코르</span>}
+                    </>
+                  ) : (
+                    <span className="timeline-miss">미연주</span>
+                  )}
+                </div>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
+
       <section className="song-story-placeholder">
         <h2>곡 이야기</h2>
         <p>

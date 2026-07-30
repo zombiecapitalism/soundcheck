@@ -595,3 +595,129 @@ select:focus {
   color: var(--text-muted);
   background: var(--track);
 }
+
+/* 곡 상세 — 타임라인 */
+.song-labels {
+  margin: 8px 0 0;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.role-badge {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.timeline-section {
+  margin-bottom: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.timeline-section h2 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.timeline-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.play-strip {
+  display: flex;
+  gap: 3px;
+  margin-bottom: 14px;
+}
+
+.strip-cell {
+  flex: 1;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--track);
+}
+
+.strip-cell.played {
+  background: var(--accent);
+}
+
+.timeline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.timeline-item {
+  display: flex;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.timeline-item:last-child {
+  border-bottom: none;
+}
+
+.timeline-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  border-radius: 50%;
+  border: 2px solid var(--track);
+  background: transparent;
+}
+
+.timeline-item.played .timeline-dot {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.timeline-body {
+  min-width: 0;
+}
+
+.timeline-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timeline-date {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.festival-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.timeline-venue {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.timeline-result {
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.timeline-miss {
+  color: var(--text-muted);
+}

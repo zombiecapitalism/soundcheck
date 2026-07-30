@@ -40,3 +40,12 @@ export function useAccuracy(eventId: number, verified: boolean) {
     enabled: Number.isFinite(eventId) && verified,
   })
 }
+
+/** 곡 상세 — 예측 근거 + 최근 공연 타임라인. */
+export function usePredictionDetail(eventId: number, songKey: string) {
+  return useQuery({
+    queryKey: ['events', eventId, 'predictions', songKey],
+    queryFn: () => api.predictionDetail(eventId, songKey),
+    enabled: Number.isFinite(eventId) && songKey.length > 0,
+  })
+}

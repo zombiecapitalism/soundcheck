@@ -32,6 +32,36 @@ export function formatEventDate(isoDate: string): string {
   return `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())} (${weekday})`
 }
 
+/**
+ * 곡의 성격 라벨 — 근거 수치에서 해석을 만든다.
+ * 고정곡(표본의 90%+ 연주) / 로테이션곡(절반 이하) / 오프너 단골(평균 3번째 이내) /
+ * 앙코르 단골(isEncoreStaple). 서로 배타적이지 않다.
+ */
+export function songRoleLabels(input: {
+  playedCount: number
+  sampleSize: number
+  avgPosition: number | null
+  encoreRatio: number | null
+}): string[] {
+  const labels: string[] = []
+  // 표본이 없으면 빈도 해석 자체가 성립하지 않는다 — 라벨을 만들지 않는다
+  if (input.sampleSize > 0) {
+    const frequency = input.playedCount / input.sampleSize
+    if (frequency >= 0.9) {
+      labels.push('고정곡')
+    } else if (frequency <= 0.5) {
+      labels.push('로테이션곡')
+    }
+  }
+  if (input.avgPosition != null && input.avgPosition <= 3) {
+    labels.push('오프너 단골')
+  }
+  if (isEncoreStaple(input.encoreRatio)) {
+    labels.push('앙코르 단골')
+  }
+  return labels
+}
+
 /** 공연까지 남은 날: "D-64" / "D-DAY" / 지났으면 "공연 종료". */
 export function dDayText(isoDate: string, today: Date = new Date()): string {
   const event = new Date(`${isoDate}T00:00:00`)

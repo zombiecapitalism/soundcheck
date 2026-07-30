@@ -6,6 +6,7 @@ import {
   formatPercent,
   isEncoreStaple,
   positionText,
+  songRoleLabels,
 } from './format'
 
 describe('formatPercent', () => {
@@ -50,6 +51,35 @@ describe('isEncoreStaple', () => {
 describe('formatEventDate', () => {
   it('한국식 날짜 + 요일로 표기한다', () => {
     expect(formatEventDate('2026-10-02')).toBe('2026.10.02 (금)')
+  })
+})
+
+describe('songRoleLabels', () => {
+  const base = { playedCount: 10, sampleSize: 20, avgPosition: null, encoreRatio: null }
+
+  it('표본의 90% 이상 연주면 고정곡', () => {
+    expect(songRoleLabels({ ...base, playedCount: 18 })).toContain('고정곡')
+    expect(songRoleLabels({ ...base, playedCount: 17 })).not.toContain('고정곡')
+  })
+
+  it('절반 이하 연주면 로테이션곡 — 고정곡과 배타적', () => {
+    expect(songRoleLabels({ ...base, playedCount: 10 })).toContain('로테이션곡')
+    expect(songRoleLabels({ ...base, playedCount: 11 })).toEqual([])
+  })
+
+  it('평균 3번째 이내면 오프너 단골', () => {
+    expect(songRoleLabels({ ...base, playedCount: 11, avgPosition: 3 })).toContain('오프너 단골')
+    expect(songRoleLabels({ ...base, playedCount: 11, avgPosition: 3.5 })).not.toContain('오프너 단골')
+  })
+
+  it('앙코르 비율 절반 이상이면 앙코르 단골 — 라벨은 중첩 가능', () => {
+    const labels = songRoleLabels({ playedCount: 19, sampleSize: 20, avgPosition: 2, encoreRatio: 0.6 })
+    expect(labels).toEqual(['고정곡', '오프너 단골', '앙코르 단골'])
+  })
+
+  it('표본 0이면 빈도 라벨을 만들지 않는다', () => {
+    expect(songRoleLabels({ playedCount: 0, sampleSize: 0, avgPosition: null, encoreRatio: null }))
+      .toEqual([])
   })
 })
 

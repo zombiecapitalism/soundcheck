@@ -40,6 +40,22 @@ export interface ArtistDetail {
   }
 }
 
+/** 곡 상세 — 예측 근거 + 최근 공연 타임라인(연주/미연주 포함, 최근순). */
+export interface PredictionDetail {
+  prediction: Prediction
+  history: {
+    setlistId: string
+    eventDate: string
+    venueName: string | null
+    cityName: string | null
+    showType: ShowType
+    playedSongCount: number
+    played: boolean
+    position: number | null
+    encore: boolean | null
+  }[]
+}
+
 /** 공연 후 예측 vs 실제 비교. precisionAtK가 헤드라인: 상위 K곡 예습 시 적중 비율. */
 export interface AccuracyReport {
   actualSongCount: number
