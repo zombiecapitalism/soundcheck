@@ -112,6 +112,25 @@ class AccuracyServiceTest {
         assertThat(service.matchPastEvents()).isZero();
     }
 
+    /**
+     * 같은 날 여러 건이면 실연주 곡이 가장 많은 것이 본 세트다 — 실측: A7X 7/27에
+     * 5곡짜리 별칭 세트와 13곡짜리 본 세트가 공존했다. DB 순서에 좌우되면 안 된다.
+     */
+    @Test
+    void picksShowWithMostSongsWhenSameDayHasMultiple() {
+        TargetEvent event = persistEvent(PAST);
+        persistShow("alias-set", PAST, "Song A", "Song B"); // 별칭 세트 (2곡)
+        persistShow("main-set", PAST, "Song A", "Song B", "Song C", "Song D"); // 본 세트 (4곡)
+        entityManager.flush();
+
+        service.matchPastEvents();
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(targetEventRepository.findById(event.getId()).orElseThrow()
+                .getActualSetlist().getSetlistId()).isEqualTo("main-set");
+    }
+
     /** 다른 날짜의 공연은 정답이 아니다. */
     @Test
     void doesNotMatchShowFromDifferentDate() {

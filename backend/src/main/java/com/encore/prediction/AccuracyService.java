@@ -1,5 +1,6 @@
 package com.encore.prediction;
 
+import com.encore.common.KoreaTime;
 import com.encore.setlist.Show;
 import com.encore.setlist.ShowRepository;
 import org.slf4j.Logger;
@@ -7,8 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.time.ZoneId;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -19,7 +19,6 @@ import java.util.List;
 public class AccuracyService {
 
     private static final Logger log = LoggerFactory.getLogger(AccuracyService.class);
-    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final TargetEventRepository targetEventRepository;
     private final ShowRepository showRepository;
@@ -37,14 +36,17 @@ public class AccuracyService {
     @Transactional
     public int matchPastEvents() {
         List<TargetEvent> unmatched =
-                targetEventRepository.findByEventDateBeforeAndActualSetlistIsNull(LocalDate.now(KST));
+                targetEventRepository.findByEventDateBeforeAndActualSetlistIsNull(KoreaTime.today());
         int matched = 0;
         for (TargetEvent event : unmatched) {
+            // 같은 날 여러 건이면 실연주 곡이 가장 많은 것을 본 세트로 본다(실측: A7X 7/27에
+            // 5곡짜리 별칭 세트와 13곡짜리 본 세트가 공존). 동수면 setlistId로 결정적 선택.
             Show actual = showRepository
                     .findByArtist_MbidAndEventDate(event.getArtist().getMbid(), event.getEventDate())
                     .stream()
                     .filter(show -> !show.playedSongs().isEmpty())
-                    .findFirst()
+                    .max(Comparator.comparingInt((Show show) -> show.playedSongs().size())
+                            .thenComparing(Show::getSetlistId))
                     .orElse(null);
             if (actual == null) {
                 continue;
