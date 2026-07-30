@@ -1,4 +1,4 @@
-# 설계 산출물 (Design Docs) — Encore
+# 설계 산출물 (Design Docs) — Soundcheck
 
 포트폴리오 제출용 핵심 설계 산출물 모음.
 

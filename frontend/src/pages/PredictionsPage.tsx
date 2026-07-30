@@ -2,6 +2,7 @@ import { Fragment, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useAccuracy, useArtist, useEvent, useExpectedSetlist, usePredictions } from '../api/queries'
 import ChatSection from '../components/ChatSection'
+import PlaylistButton from '../components/PlaylistButton'
 import ProbabilityBar from '../components/ProbabilityBar'
 import SimilarShowsSection from '../components/SimilarShowsSection'
 import StatusView from '../components/StatusView'
@@ -59,6 +60,16 @@ export default function PredictionsPage() {
     : predictions
   // 예습 체크 — 기기 로컬 상태(localStorage). 코스 뷰에서는 코스 곡이 분모다
   const { checkedKeys, toggle } = usePracticeChecklist(eventId)
+  // 묶음 듣기(E12) 대상: 코스 뷰=코스 곡, 체크한 곡이 있으면 그 곡들(확률순), 없으면 상위 예상 셋
+  const playlistKeys =
+    view === 'course' && courseSongs ? courseSongs.map((song) => song.prediction.songKey)
+    : checkedKeys.size > 0
+      ? (predictions ?? []).filter((p) => checkedKeys.has(p.songKey)).map((p) => p.songKey)
+      : (predictions ?? []).slice(0, setSize).map((p) => p.songKey)
+  const playlistLabel =
+    view === 'course' && courseSongs ? `코스 ${playlistKeys.length}곡`
+    : checkedKeys.size > 0 ? `체크한 ${playlistKeys.length}곡`
+    : `상위 ${playlistKeys.length}곡`
   const progress = view === 'course' && courseSongs
     ? practiceProgress(courseSongs.map((song) => song.prediction), checkedKeys, courseSongs.length)
     : practiceProgress(predictions ?? [], checkedKeys, setSize)
@@ -187,6 +198,7 @@ export default function PredictionsPage() {
           {view === 'timeline' && !expected && (
             <p className="view-hint">예상 순서를 구성하는 중…</p>
           )}
+          <PlaylistButton eventId={eventId} songKeys={playlistKeys} label={playlistLabel} />
           {progress.total > 0 && (
             <div className="practice-progress">
               <span className="practice-progress-text">

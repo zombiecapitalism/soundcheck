@@ -9,7 +9,7 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <Link to="/" className="brand">
-          Encore
+          Soundcheck
         </Link>
         <span className="brand-sub">셋리스트 예측</span>
       </header>

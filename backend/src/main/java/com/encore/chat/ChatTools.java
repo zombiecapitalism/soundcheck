@@ -24,7 +24,7 @@ public class ChatTools {
 
     /** 통계 도구를 썼을 때 출처 목록에 넣는 표기 — 문서 출처와 구분된다. */
     static final Source PREDICTION_DATA_SOURCE =
-            new Source("Encore", "", "예측 데이터 기준");
+            new Source("Soundcheck", "", "예측 데이터 기준");
 
     private final RagRetriever retriever;
     private final PredictionRepository predictionRepository;

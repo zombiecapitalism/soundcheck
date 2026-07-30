@@ -1,6 +1,6 @@
-# 인터페이스 정의서 (REST API) — Encore
+# 인터페이스 정의서 (REST API) — Soundcheck
 
-- 프로젝트: Encore (내한 페스티벌 셋리스트 예측 & 예습 서비스)
+- 프로젝트: Soundcheck (내한 페스티벌 셋리스트 예측 & 예습 서비스)
 - 작성일: 2026-07-30
 - 버전: v1.0
 - 작성 방식: **구현 완료된 프로토타입을 역설계**하여 문서화 (springdoc/OpenAPI 미도입 — 컨트롤러 코드가 원본).
@@ -142,6 +142,28 @@ GET /api/events/{id}/similar-shows
               "setlist": [{ "position": 1, "songName": "...", "encore": false }] }] }
 ```
 
+### API-04c 재생목록 — 묶음 듣기 (E12)
+
+```
+POST /api/events/{id}/playlist
+{ "songKeys": ["holy wars", "trust"] }
+```
+
+선택한 예측 곡을 YouTube 임시 재생목록(`youtube.com/watch_videos?video_ids=…`, 비공식 엔드포인트) 링크로 만든다. POST인 이유: 캐시 미스 곡은 YouTube Data API 검색(쿼터 100유닛/건)이 실행된다.
+
+| 구분 | 내용 |
+|------|------|
+| 비용 가드 | **예측 목록에 있는 곡만** 검색(임의 곡명 쿼터 유출 방지), 결과는 실패까지 `song_video`에 캐시, 최대 50곡 |
+| 실패 | 이벤트 없음 404 / `YOUTUBE_API_KEY` 미설정 503 / 곡 0개·50곡 초과 400 |
+
+```json
+{ "url": "https://www.youtube.com/watch_videos?video_ids=abc,def",
+  "songs":   [{ "songKey": "holy wars", "songName": "Holy Wars", "videoTitle": "Megadeth - Holy Wars (Live)" }],
+  "missing": [{ "songKey": "rare song", "songName": "Rare Song", "videoTitle": null }] }
+```
+
+- `url` null = 해석된 영상이 하나도 없음. 재생 순서는 요청한 songKeys 순서.
+
 ### API-05 적중률 (단건)
 
 ```
@@ -261,7 +283,7 @@ Content-Type: application/json / Accept: text/event-stream
 | 검증 | 이벤트 없음 404 / 마지막 메시지가 비어 있거나 user가 아니면 400 / 질문 500자 초과 400 |
 | 비용 가드 | IP·이벤트당 분당 5회(429), `llm_call_log`(CHAT) 기록 |
 | SSE 순서 | `delta`* → `sources` → `done` — **출처가 도구 실행 후 확정되므로 곡 설명과 순서가 다르다**. 실패는 `error` 이벤트 |
-| 출처 | 문서 도구 사용 시 URL 목록, 통계 도구 사용 시 `{name: "Encore", url: "", title: "예측 데이터 기준"}` |
+| 출처 | 문서 도구 사용 시 URL 목록, 통계 도구 사용 시 `{name: "Soundcheck", url: "", title: "예측 데이터 기준"}` |
 
 EventSource는 POST 불가 — 프론트는 fetch 스트림으로 SSE를 파싱한다(`useChat`).
 

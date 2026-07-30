@@ -190,6 +190,21 @@ ALTER TABLE prediction
     ADD CONSTRAINT ck_prediction_played_within_sample CHECK (played_count >= 0 AND played_count <= sample_size);
 ```
 
+### 2.2a 재생목록 캐시 (V10)
+
+```sql
+-- 곡별 YouTube 영상 ID 캐시. video_id NULL = 검색했지만 못 찾음(네거티브 캐시 — 재검색 쿼터 방지)
+CREATE TABLE song_video (
+    id           BIGSERIAL PRIMARY KEY,
+    artist_mbid  UUID NOT NULL REFERENCES artist(mbid),
+    song_key     VARCHAR(300) NOT NULL,
+    video_id     VARCHAR(20),
+    video_title  VARCHAR(300),
+    searched_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (artist_mbid, song_key)
+);
+```
+
 ### 2.3 배치 이력
 
 ```sql

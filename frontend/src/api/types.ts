@@ -160,6 +160,13 @@ export interface ExpectedSetlist {
   encore: { order: number; songKey: string; songName: string; probability: number }[]
 }
 
+/** 재생목록(E12) — 선택 곡의 YouTube 임시 재생목록. url null = 영상을 하나도 못 찾음. */
+export interface PlaylistResult {
+  url: string | null
+  songs: { songKey: string; songName: string; videoTitle: string | null }[]
+  missing: { songKey: string; songName: string; videoTitle: string | null }[]
+}
+
 /** 유사 공연(E11) — 예측 대상과 가장 비슷한 과거 공연 상위 3. */
 export interface SimilarShows {
   shows: {

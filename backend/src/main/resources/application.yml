@@ -29,6 +29,11 @@ setlist-fm:
   base-url: https://api.setlist.fm/rest
   api-key: ${SETLIST_FM_API_KEY}
 
+youtube:
+  # 비어 있으면 재생목록 기능만 503으로 비활성 — 앱 기동은 막지 않는다(RAG 키와 같은 원칙)
+  api-key: ${YOUTUBE_API_KEY:}
+  base-url: https://www.googleapis.com/youtube/v3
+
 encore:
   admin:
     username: ${ADMIN_USERNAME:admin}

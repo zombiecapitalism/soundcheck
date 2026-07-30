@@ -1,6 +1,6 @@
-# 테이블설계서 — Encore
+# 테이블설계서 — Soundcheck
 
-- 프로젝트: Encore (내한 페스티벌 셋리스트 예측 & 예습 서비스)
+- 프로젝트: Soundcheck (내한 페스티벌 셋리스트 예측 & 예습 서비스)
 - 작성일: 2026-07-30
 - 버전: v1.0
 - DBMS: PostgreSQL 16 + pgvector (0.8.x)
@@ -254,6 +254,18 @@ venue/tour명에 "festival"/"페스티벌"이 없는 페스티벌 공연장(예:
 | `created_at` | TIMESTAMPTZ | N | 인덱스 `(created_at DESC)` |
 
 계측은 `LlmCallRecorder`가 하며 **절대 예외를 던지지 않는다** — 계측 실패가 원 기능을 깨면 안 된다.
+
+### 4.6b song_video — 재생목록 영상 캐시 (E12, V10)
+
+곡별 YouTube 대표 영상 ID. `video_id` NULL = 검색했지만 못 찾음(**네거티브 캐시** — 재검색으로 쿼터를 태우지 않는다). (`SongVideo.java`)
+
+| 컬럼 | 타입 | Null | 설명 |
+|------|------|:----:|------|
+| `id` | BIGSERIAL | PK | |
+| `artist_mbid` | UUID | N | FK → `artist` |
+| `song_key` | VARCHAR(300) | N | UNIQUE (artist_mbid, song_key) |
+| `video_id` / `video_title` | VARCHAR | Y | YouTube Data API search 결과 관련도 1위 |
+| `searched_at` | TIMESTAMPTZ | N | |
 
 ### 4.7 collection_log — 배치 실행 이력
 

@@ -64,7 +64,7 @@ class WikipediaClientTest {
                         containsString("srsearch=Afterlife%20Avenged%20Sevenfold%20song"),
                         containsString("srlimit=1"))))
                 .andExpect(method(GET))
-                .andExpect(header("User-Agent", containsString("EncoreSetlistStudy")))
+                .andExpect(header("User-Agent", containsString("SoundcheckSetlistStudy")))
                 .andRespond(withSuccess(fixture("search.json"), MediaType.APPLICATION_JSON));
 
         List<String> titles = client.search("en", "Afterlife Avenged Sevenfold song", 1);
@@ -106,7 +106,7 @@ class WikipediaClientTest {
         WikipediaClient withContact = newClient("mailto:ops@example.com");
         server.expect(requestTo(containsString("srsearch=Pixies")))
                 .andExpect(header("User-Agent",
-                        containsString("EncoreSetlistStudy/0.1 (portfolio project; mailto:ops@example.com)")))
+                        containsString("SoundcheckSetlistStudy/0.1 (portfolio project; mailto:ops@example.com)")))
                 .andRespond(withSuccess(fixture("search.json"), MediaType.APPLICATION_JSON));
 
         withContact.search("en", "Pixies", 1);

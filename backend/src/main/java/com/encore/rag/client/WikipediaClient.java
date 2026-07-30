@@ -45,7 +45,7 @@ public class WikipediaClient {
 
     /** Wikimedia 정책: 식별 가능한 UA + 연락 수단 권고. 연락처는 환경변수로만 주입된다. */
     private static String userAgent(String contact) {
-        return "EncoreSetlistStudy/0.1 (portfolio project"
+        return "SoundcheckSetlistStudy/0.1 (portfolio project"
                 + (contact == null || contact.isBlank() ? "" : "; " + contact.trim()) + ")";
     }
 

@@ -1,4 +1,4 @@
-import type { AccuracyReport, AccuracySummary, ArtistDetail, ArtistStats, EventSummary, ExpectedSetlist, Prediction, PredictionDetail, ProblemDetail, SimilarShows, SongStats } from './types'
+import type { AccuracyReport, AccuracySummary, ArtistDetail, ArtistStats, EventSummary, ExpectedSetlist, PlaylistResult, Prediction, PredictionDetail, ProblemDetail, SimilarShows, SongStats } from './types'
 
 /** 백엔드 에러(RFC 7807)를 메시지로 옮긴 예외. */
 export class ApiError extends Error {
@@ -10,8 +10,15 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string): Promise<T> {
-  const response = await fetch(path, { headers: { Accept: 'application/json' } })
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(path, {
+    ...init,
+    headers: {
+      Accept: 'application/json',
+      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...init?.headers,
+    },
+  })
   if (!response.ok) {
     let message = `요청 실패 (${response.status})`
     try {
@@ -39,4 +46,10 @@ export const api = {
   expectedSetlist: (eventId: number) =>
     request<ExpectedSetlist>(`/api/events/${eventId}/expected-setlist`),
   similarShows: (eventId: number) => request<SimilarShows>(`/api/events/${eventId}/similar-shows`),
+  /** POST인 이유: 캐시 미스 곡은 서버가 YouTube 검색(쿼터 소모)을 실행한다. */
+  createPlaylist: (eventId: number, songKeys: string[]) =>
+    request<PlaylistResult>(`/api/events/${eventId}/playlist`, {
+      method: 'POST',
+      body: JSON.stringify({ songKeys }),
+    }),
 }

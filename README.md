@@ -1,4 +1,4 @@
-# Encore
+# Soundcheck
 
 내한 페스티벌 셋리스트 예측 & 예습 서비스. 자세한 배경은 `docs/setlist-prd.md`, DB/API 설계는 `docs/setlist-schema.md` 참고.
 

@@ -447,6 +447,23 @@ class ApiIntegrationTest {
                 .andExpect(status().isNotFound());
     }
 
+    /** 재생목록(E12) — 테스트 환경은 YouTube 키가 없어 503, 이벤트 없음은 404가 먼저다. */
+    @Test
+    void playlistIsUnavailableWithoutApiKey() throws Exception {
+        TargetEvent event = persistEvent("재생목록 이벤트", LocalDate.of(2026, 10, 2));
+
+        mockMvc.perform(post("/api/events/{id}/playlist", event.getId())
+                        .contentType("application/json")
+                        .content("{\"songKeys\":[\"holy wars\"]}"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(header().string("Content-Type", containsString("application/problem+json")));
+
+        mockMvc.perform(post("/api/events/999999/playlist")
+                        .contentType("application/json")
+                        .content("{\"songKeys\":[\"holy wars\"]}"))
+                .andExpect(status().isNotFound());
+    }
+
     /** E5 통계 시드: 연도·투어·유형이 갈리는 3회 공연. holy wars는 마지막 공연에서 tape다. */
     private void persistStatsShows() {
         record Spec(String id, LocalDate date, ShowType type, String tour, boolean tape) {

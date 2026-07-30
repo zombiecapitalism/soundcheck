@@ -1,4 +1,4 @@
-/* Encore — 모바일 우선. 공연장에서 폰으로 보는 시나리오라 다크 기본, 큰 탭 타깃. */
+/* Soundcheck — 모바일 우선. 공연장에서 폰으로 보는 시나리오라 다크 기본, 큰 탭 타깃. */
 
 :root {
   --bg: #0e1016;
@@ -1362,4 +1362,33 @@ select:focus {
   font-size: 13px;
   line-height: 1.9;
   color: var(--text);
+}
+
+/* 묶음 듣기 (E12) */
+.playlist-row {
+  margin-top: 12px;
+}
+
+.playlist-button {
+  min-height: 44px;
+  width: 100%;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--bg);
+  background: var(--accent);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.playlist-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.playlist-missing {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
 }
