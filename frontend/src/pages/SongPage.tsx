@@ -157,8 +157,9 @@ function SongStorySection({
   songName: string
 }) {
   const story = useSongStory(artistMbid, songKey, songName)
-  // 근거가 부족하면 서버(프롬프트 계약)가 정확히 "정보 없음"을 보낸다
-  const noInfo = story.status === 'done' && story.text.trim() === '정보 없음'
+  // 근거가 부족하면 서버(프롬프트 계약)가 "정보 없음"을 보낸다 —
+  // 모델이 마침표 등을 덧붙이는 경우가 있어(실측: "정보 없음.") 정확 일치가 아니라 패턴 판정
+  const noInfo = story.status === 'done' && /^정보 없음[.!]?$/.test(story.text.trim())
 
   return (
     <section className="song-story">
