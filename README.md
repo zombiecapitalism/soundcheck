@@ -119,9 +119,35 @@ npm run dev
   /src/api        백엔드 클라이언트 (타입, fetch 래퍼, TanStack Query 훅)
   /src/pages      화면 (이벤트 목록 / 예측 상세 / 곡 상세)
   /src/lib        표기용 순수 함수 (vitest 단위 테스트)
-/docs             설계 문서 (PRD, 스키마)
-docker-compose.yml
+/docs             설계 문서 (PRD, 스키마, 튜닝 로그)
+docker-compose.yml        # 로컬 개발용 (DB만)
+docker-compose.prod.yml   # 운영용 (db + backend + web)
 ```
+
+## CI
+
+`.github/workflows/ci.yml` — push/PR마다 백엔드(`gradlew build`, Testcontainers 포함)와
+프론트(vitest / tsc / oxlint / build)를 병렬 실행한다. 외부 API 키는 필요 없다 —
+테스트는 전부 목/픽스처로 돌고, 더미 값은 테스트 리소스가 공급한다.
+
+## 배포 (클라우드 1대, 수동)
+
+서버에 docker + compose 플러그인, 저장소 클론, 시크릿이 채워진 `.env`가 있으면:
+
+```bash
+./scripts/deploy.sh
+```
+
+- `docker-compose.prod.yml`: pgvector DB(호스트 포트 미개방) + backend(멀티 스테이지
+  빌드) + web(nginx — SPA 히스토리 폴백, `/api` 리버스 프록시, SSE 버퍼링 해제)
+- 같은 오리진으로 서빙하므로 CORS 설정이 필요 없다
+- 웹 포트는 `WEB_PORT`(기본 80)로 조정
+
+## 예측 검증 (펜타포트 2026)
+
+공연 전 이벤트를 등록해 예측 스냅샷을 고정하고, 공연 후 일일 파이프라인(또는 관리자
+"예측 재계산" 버튼)이 실제 셋리스트를 매칭해 Precision@K·커버리지를 자동 채점한다.
+파라미터 변경 이력과 적중률 변화는 [docs/tuning-log.md](docs/tuning-log.md)에 기록한다.
 
 ## 참고
 

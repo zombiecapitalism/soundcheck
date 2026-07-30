@@ -1,0 +1,47 @@
+# 운영 구성 — 클라우드 1대(PRD 6.2). 로컬 개발은 docker-compose.yml(DB만)을 쓴다.
+# 실행: docker compose --env-file .env -f docker-compose.prod.yml up -d --build
+services:
+  db:
+    image: pgvector/pgvector:0.8.5-pg16-trixie
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-encore}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    # 개발 compose와 달리 호스트 포트를 열지 않는다 — 앱만 내부 네트워크로 접근
+    volumes:
+      - encore-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME:-encore}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME:-encore}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      SETLIST_FM_API_KEY: ${SETLIST_FM_API_KEY}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      RAG_CONTACT: ${RAG_CONTACT:-}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-80}:80"
+    depends_on:
+      - backend
+
+volumes:
+  encore-postgres-data:
