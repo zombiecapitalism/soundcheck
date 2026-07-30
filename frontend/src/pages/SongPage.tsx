@@ -1,3 +1,4 @@
+import { Suspense, lazy } from 'react'
 import { Link, useParams } from 'react-router'
 import { useEvent, usePredictionDetail } from '../api/queries'
 import StatusView from '../components/StatusView'
@@ -15,6 +16,9 @@ import {
   typeBreakdownText,
 } from '../lib/format'
 import { listenLinks } from '../lib/links'
+
+// recharts가 번들에서 가장 크다 — 차트 섹션만 별도 청크로 분리
+const SongStatsSection = lazy(() => import('../components/SongStatsCharts'))
 
 /** 곡 상세 — 예측 근거를 최근 공연 타임라인으로 풀어 보여준다. RAG(F4)는 아래 플레이스홀더에 연결 예정. */
 export default function SongPage() {
@@ -205,6 +209,10 @@ export default function SongPage() {
           ))}
         </ol>
       </section>
+
+      <Suspense fallback={null}>
+        <SongStatsSection artistMbid={event?.artist.mbid} songKey={songKey} />
+      </Suspense>
 
       <SongStorySection
         artistMbid={event?.artist.mbid}

@@ -164,6 +164,33 @@ GET /api/events/accuracy
    "top5Hits": 4, "top5Size": 5, "top10Hits": 8, "top10Size": 10 }]
 ```
 
+### API-06a 곡 장기 통계 (E5)
+
+```
+GET /api/artists/{mbid}/songs/{songKey}/stats
+```
+
+예측 표본(최근 20회)과 달리 **수집된 전체 공연** 대상 집계. tape 곡은 등장으로 세지 않고, 곡 0건 공연은 분모에서 제외. 아티스트 없음 또는 연주 기록 없는 곡 → 404.
+
+```json
+{ "yearly": [{ "year": 2025, "totalShows": 41, "playedShows": 38 }],
+  "tours":  [{ "tourName": null, "totalShows": 12, "playedShows": 9 }],
+  "types":  [{ "showType": "FESTIVAL", "totalShows": 12, "playedShows": 9 }] }
+```
+
+- `tours[].tourName` null = 투어 없는 공연 묶음(원본 표기 그대로 group by, 공연 수 내림차순 — 화면은 상위 5개만).
+
+### API-06b 아티스트 활동 통계 (E5)
+
+```
+GET /api/artists/{mbid}/stats
+```
+
+```json
+{ "yearly": [{ "year": 2025, "showCount": 41, "avgSongCount": 17.2 }],
+  "typeDistribution": { "festival": 12, "solo": 20, "unknown": 9 } }
+```
+
 ### API-07 곡 설명 (RAG, SSE)
 
 ```

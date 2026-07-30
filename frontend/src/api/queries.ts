@@ -54,3 +54,13 @@ export function usePredictionDetail(eventId: number, songKey: string) {
 export function useAccuracyArchive() {
   return useQuery({ queryKey: ['accuracy-archive'], queryFn: api.accuracyArchive })
 }
+
+/** 곡 장기 통계(E5) — 곡 상세 차트용. 404(연주 기록 없음)는 화면에서 섹션 생략. */
+export function useSongStats(mbid: string | undefined, songKey: string) {
+  return useQuery({
+    queryKey: ['artists', mbid, 'songs', songKey, 'stats'],
+    queryFn: () => api.songStats(mbid!, songKey),
+    enabled: !!mbid && songKey.length > 0,
+    retry: false,
+  })
+}

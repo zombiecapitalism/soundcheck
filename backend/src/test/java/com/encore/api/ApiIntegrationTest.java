@@ -356,6 +356,79 @@ class ApiIntegrationTest {
                 .andExpect(jsonPath("$.status").value(404));
     }
 
+    /** E5 통계 시드: 연도·투어·유형이 갈리는 3회 공연. holy wars는 마지막 공연에서 tape다. */
+    private void persistStatsShows() {
+        record Spec(String id, LocalDate date, ShowType type, String tour, boolean tape) {
+        }
+        for (Spec spec : List.of(
+                new Spec("stat-2025", LocalDate.of(2025, 5, 1), ShowType.SOLO, "Mega Tour", false),
+                new Spec("stat-2026a", LocalDate.of(2026, 6, 1), ShowType.FESTIVAL, null, false),
+                new Spec("stat-2026b", LocalDate.of(2026, 7, 1), ShowType.UNKNOWN, null, true))) {
+            Show show = Show.builder()
+                    .setlistId(spec.id()).versionId("v1").artist(artist).eventDate(spec.date())
+                    .tourName(spec.tour()).showType(spec.type()).rawJson("{}")
+                    .build();
+            show.replaceSongs(List.of(
+                    ShowSong.builder().setIndex((short) 0).positionInSet((short) 1).positionTotal((short) 1)
+                            .songName("Filler").songKey("filler").build(),
+                    ShowSong.builder().setIndex((short) 0).positionInSet((short) 2).positionTotal((short) 2)
+                            .songName("Holy Wars").songKey("holy wars").tape(spec.tape()).build()));
+            entityManager.persist(show);
+        }
+        entityManager.flush();
+    }
+
+    /** E5 곡 통계 — 전체 수집 공연 대상 연도·투어·유형별 등장률. tape는 등장으로 안 센다. */
+    @Test
+    void songStatsAggregateYearTourAndType() throws Exception {
+        persistStatsShows();
+
+        mockMvc.perform(get("/api/artists/{mbid}/songs/{songKey}/stats", artist.getMbid(), "holy wars"))
+                .andExpect(status().isOk())
+                // 연도별: 2025는 1/1, 2026은 2회 중 1회(tape 공연은 분모만)
+                .andExpect(jsonPath("$.yearly.length()").value(2))
+                .andExpect(jsonPath("$.yearly[0].year").value(2025))
+                .andExpect(jsonPath("$.yearly[0].playedShows").value(1))
+                .andExpect(jsonPath("$.yearly[1].year").value(2026))
+                .andExpect(jsonPath("$.yearly[1].totalShows").value(2))
+                .andExpect(jsonPath("$.yearly[1].playedShows").value(1))
+                // 투어별: 공연 수 내림차순 — 투어 없음(null) 묶음 2회가 먼저
+                .andExpect(jsonPath("$.tours[0].tourName").value(nullValue()))
+                .andExpect(jsonPath("$.tours[0].totalShows").value(2))
+                .andExpect(jsonPath("$.tours[1].tourName").value("Mega Tour"))
+                .andExpect(jsonPath("$.tours[1].playedShows").value(1))
+                // 유형별: UNKNOWN 공연(tape)은 등장 0
+                .andExpect(jsonPath("$.types.length()").value(3))
+                .andExpect(jsonPath("$.types[?(@.showType=='SOLO')].playedShows").value(1))
+                .andExpect(jsonPath("$.types[?(@.showType=='UNKNOWN')].playedShows").value(0));
+    }
+
+    /** 연주 기록이 전혀 없는 곡(또는 tape뿐)은 404 — 빈 통계로 위장하지 않는다. */
+    @Test
+    void songStatsIsNotFoundForUnknownSong() throws Exception {
+        persistStatsShows();
+
+        mockMvc.perform(get("/api/artists/{mbid}/songs/{songKey}/stats", artist.getMbid(), "no such song"))
+                .andExpect(status().isNotFound())
+                .andExpect(header().string("Content-Type", containsString("application/problem+json")));
+    }
+
+    /** E5 아티스트 통계 — 연도별 활동량과 유형 분포. */
+    @Test
+    void artistStatsSummarizeActivity() throws Exception {
+        persistStatsShows();
+
+        mockMvc.perform(get("/api/artists/{mbid}/stats", artist.getMbid()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.yearly[0].year").value(2025))
+                .andExpect(jsonPath("$.yearly[0].showCount").value(1))
+                .andExpect(jsonPath("$.yearly[1].showCount").value(2))
+                .andExpect(jsonPath("$.yearly[1].avgSongCount").value(closeTo(2.0, 1e-9)))
+                .andExpect(jsonPath("$.typeDistribution.festival").value(1))
+                .andExpect(jsonPath("$.typeDistribution.solo").value(1))
+                .andExpect(jsonPath("$.typeDistribution.unknown").value(1));
+    }
+
     /**
      * 경로 변수 형식 오류(UUID 아님)는 500이 아니라 400 Problem이어야 한다.
      * problemdetails.enabled가 프레임워크 수준에서 변환한다(커스텀 핸들러 불필요 — 실측으로 확인).

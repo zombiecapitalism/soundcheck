@@ -151,6 +151,20 @@ export interface AccuracySummary {
   top10Size: number
 }
 
+/** 곡의 장기 통계(E5) — 예측 표본(최근 20회)과 달리 수집된 전체 공연 대상. */
+export interface SongStats {
+  yearly: { year: number; totalShows: number; playedShows: number }[]
+  /** tourName null = 투어 없는 공연 묶음. 공연 수 내림차순 */
+  tours: { tourName: string | null; totalShows: number; playedShows: number }[]
+  types: { showType: ShowType; totalShows: number; playedShows: number }[]
+}
+
+/** 아티스트 활동 요약(E5). */
+export interface ArtistStats {
+  yearly: { year: number; showCount: number; avgSongCount: number | null }[]
+  typeDistribution: { festival: number; solo: number; unknown: number }
+}
+
 /** 곡 배경 설명의 출처 — RAG 응답에 항상 함께 온다. */
 export interface ExplanationSource {
   name: string

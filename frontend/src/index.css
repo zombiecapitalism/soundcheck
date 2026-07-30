@@ -1028,3 +1028,35 @@ select:focus {
 .trend-badge.down {
   color: #f28b82;
 }
+
+/* 곡 장기 통계 차트 (E5) */
+.stats-section {
+  margin-bottom: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.stats-section h2 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.stats-figure {
+  margin: 0 0 8px;
+}
+
+.stats-figure:last-child {
+  margin-bottom: 0;
+}
+
+.stats-figure figcaption {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}

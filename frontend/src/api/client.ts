@@ -1,4 +1,4 @@
-import type { AccuracyReport, AccuracySummary, ArtistDetail, EventSummary, Prediction, PredictionDetail, ProblemDetail } from './types'
+import type { AccuracyReport, AccuracySummary, ArtistDetail, ArtistStats, EventSummary, Prediction, PredictionDetail, ProblemDetail, SongStats } from './types'
 
 /** 백엔드 에러(RFC 7807)를 메시지로 옮긴 예외. */
 export class ApiError extends Error {
@@ -33,4 +33,7 @@ export const api = {
   accuracyArchive: () => request<AccuracySummary[]>('/api/events/accuracy'),
   predictionDetail: (eventId: number, songKey: string) =>
     request<PredictionDetail>(`/api/events/${eventId}/predictions/${encodeURIComponent(songKey)}`),
+  songStats: (mbid: string, songKey: string) =>
+    request<SongStats>(`/api/artists/${mbid}/songs/${encodeURIComponent(songKey)}/stats`),
+  artistStats: (mbid: string) => request<ArtistStats>(`/api/artists/${mbid}/stats`),
 }
