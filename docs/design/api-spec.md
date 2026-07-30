@@ -339,6 +339,15 @@ GET /api/admin/ai-dashboard
 
 - 스트리밍 호출(EXPLANATION·CHAT)은 usage 메타데이터가 없어 토큰이 NULL로 기록될 수 있다 — 토큰 합계는 기록된 값만 합산한 하한치.
 
+### API-14b RAG 저장소 관리 (E10)
+
+```
+GET    /api/admin/rag/status                — 수집 대상 아티스트별 문서/청크/캐시 수 + 마지막 EMBED 실행
+GET    /api/admin/rag/documents?artistMbid= — 문서 목록(제목/URL/doc_type/청크 수)
+DELETE /api/admin/rag/documents/{id}        — 문서 삭제(청크 FK CASCADE + 아티스트 설명 캐시 무효화)
+DELETE /api/admin/rag/cache/{artistMbid}    — 설명 캐시 아티스트 단위 무효화
+```
+
 ### API-15 배치 이력
 
 ```

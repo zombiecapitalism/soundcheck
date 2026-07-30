@@ -113,6 +113,7 @@ function AdminConsole({ onAuthExpired }: { onAuthExpired: () => void }) {
         onDone={invalidate}
       />
       <AiDashboardSection />
+      <RagSection />
       <KoreaShowSection onRegistered={invalidate} />
       <ArtistSection onRegistered={invalidate} />
       <EventSection onCreated={invalidate} />
@@ -247,6 +248,122 @@ function AiDashboardSection() {
           {data.totalCalls === 0 && <p className="form-hint">오늘은 아직 LLM 호출이 없어요.</p>}
         </>
       )}
+    </section>
+  )
+}
+
+/** RAG 저장소(E10) — 아티스트별 임베딩·캐시 상태, 문서 목록·삭제, 캐시 무효화. */
+function RagSection() {
+  const queryClient = useQueryClient()
+  const [selectedMbid, setSelectedMbid] = useState<string | null>(null)
+
+  const status = useQuery({ queryKey: ['admin', 'rag-status'], queryFn: adminApi.ragStatus })
+  const documents = useQuery({
+    queryKey: ['admin', 'rag-documents', selectedMbid],
+    queryFn: () => adminApi.ragDocuments(selectedMbid!),
+    enabled: selectedMbid != null,
+  })
+  const invalidateRag = () => {
+    queryClient.invalidateQueries({ queryKey: ['admin', 'rag-status'] })
+    queryClient.invalidateQueries({ queryKey: ['admin', 'rag-documents'] })
+  }
+  const evict = useMutation({ mutationFn: adminApi.evictExplanationCache, onSuccess: invalidateRag })
+  const deleteDoc = useMutation({ mutationFn: adminApi.deleteRagDocument, onSuccess: invalidateRag })
+
+  return (
+    <section className="admin-section">
+      <h2>RAG 저장소</h2>
+      {status.isPending && <p className="form-hint">불러오는 중…</p>}
+      {status.error && <p className="form-error">{status.error.message}</p>}
+      {status.data && status.data.length === 0 && (
+        <p className="form-hint">수집 대상 아티스트가 없어요.</p>
+      )}
+      {status.data && status.data.length > 0 && (
+        <div className="log-table-wrap">
+          <table className="log-table">
+            <thead>
+              <tr>
+                <th>아티스트</th>
+                <th>문서/청크</th>
+                <th>캐시된 설명</th>
+                <th>마지막 임베딩</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {status.data.map((row) => (
+                <tr key={row.artistMbid}>
+                  <td>
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() =>
+                        setSelectedMbid(selectedMbid === row.artistMbid ? null : row.artistMbid)
+                      }
+                    >
+                      {row.artistName}
+                    </button>
+                  </td>
+                  <td>
+                    {row.documentCount}/{row.chunkCount}
+                  </td>
+                  <td>{row.explanationCount}</td>
+                  <td>
+                    {row.lastEmbedAt
+                      ? `${new Date(row.lastEmbedAt).toLocaleString('ko-KR')} (${row.lastEmbedStatus})`
+                      : '—'}
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="text-button"
+                      disabled={evict.isPending || row.explanationCount === 0}
+                      onClick={() => evict.mutate(row.artistMbid)}
+                    >
+                      캐시 비우기
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {selectedMbid && documents.data && (
+        <>
+          <h3 className="rag-doc-title">문서 목록</h3>
+          {documents.data.length === 0 && <p className="form-hint">수집된 문서가 없어요.</p>}
+          {documents.data.length > 0 && (
+            <ul className="candidate-list">
+              {documents.data.map((doc) => (
+                <li key={doc.id} className="candidate-item">
+                  <div className="candidate-info">
+                    <strong>{doc.title}</strong>
+                    <span className="candidate-hint">
+                      {' — '}
+                      {doc.docType}
+                      {doc.songKey && ` · ${doc.songKey}`} · 청크 {doc.chunkCount} ·{' '}
+                      <a href={doc.sourceUrl} target="_blank" rel="noreferrer">
+                        출처 ↗
+                      </a>
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="text-button danger"
+                    disabled={deleteDoc.isPending}
+                    onClick={() => deleteDoc.mutate(doc.id)}
+                  >
+                    삭제
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+      {evict.error && <p className="form-error">{evict.error.message}</p>}
+      {deleteDoc.error && <p className="form-error">{deleteDoc.error.message}</p>}
     </section>
   )
 }

@@ -43,6 +43,28 @@ async function adminRequest<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>
 }
 
+/** 본문 없는 응답(DELETE 등) — response.json()을 호출하면 안 된다. */
+async function adminRequestVoid(path: string, init?: RequestInit): Promise<void> {
+  const auth = sessionStorage.getItem(AUTH_KEY)
+  const response = await fetch(path, {
+    ...init,
+    headers: {
+      ...(auth ? { Authorization: `Basic ${auth}` } : {}),
+      ...init?.headers,
+    },
+  })
+  if (!response.ok) {
+    let message = `요청 실패 (${response.status})`
+    try {
+      const problem = (await response.json()) as { detail?: string; title?: string }
+      message = problem.detail ?? problem.title ?? message
+    } catch {
+      /* Problem 형식이 아니면 기본 메시지 */
+    }
+    throw new ApiError(response.status, message)
+  }
+}
+
 export interface ArtistCandidate {
   mbid: string
   name: string
@@ -97,6 +119,27 @@ export interface KoreaShow {
   alreadyRegistered: boolean
 }
 
+/** RAG 저장소 상태(E10) — 수집 대상 아티스트별. */
+export interface ArtistRagStatus {
+  artistMbid: string
+  artistName: string
+  documentCount: number
+  chunkCount: number
+  explanationCount: number
+  lastEmbedAt: string | null
+  lastEmbedStatus: 'SUCCESS' | 'PARTIAL' | 'FAILED' | null
+}
+
+export interface RagDocumentSummary {
+  id: number
+  title: string
+  sourceUrl: string
+  docType: 'SONG' | 'ALBUM' | 'ARTIST'
+  songKey: string | null
+  chunkCount: number
+  collectedAt: string
+}
+
 /** AI 사용량 대시보드(E9) — 오늘(KST) 기준. */
 export interface AiDashboard {
   totalCalls: number
@@ -142,4 +185,11 @@ export const adminApi = {
   startRagIngest: () =>
     adminRequest<{ started: boolean }>('/api/admin/batch/rag-ingest', { method: 'POST' }),
   aiDashboard: () => adminRequest<AiDashboard>('/api/admin/ai-dashboard'),
+  ragStatus: () => adminRequest<ArtistRagStatus[]>('/api/admin/rag/status'),
+  ragDocuments: (artistMbid: string) =>
+    adminRequest<RagDocumentSummary[]>(`/api/admin/rag/documents?artistMbid=${artistMbid}`),
+  deleteRagDocument: (id: number) =>
+    adminRequestVoid(`/api/admin/rag/documents/${id}`, { method: 'DELETE' }),
+  evictExplanationCache: (artistMbid: string) =>
+    adminRequestVoid(`/api/admin/rag/cache/${artistMbid}`, { method: 'DELETE' }),
 }

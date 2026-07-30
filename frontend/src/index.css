@@ -1283,3 +1283,13 @@ select:focus {
   border: 1px solid var(--border);
   border-radius: 10px;
 }
+
+/* RAG 저장소 관리 (E10) */
+.rag-doc-title {
+  margin: 14px 0 8px;
+  font-size: 14px;
+}
+
+.text-button.danger {
+  color: #f28b82;
+}
