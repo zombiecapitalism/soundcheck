@@ -33,9 +33,13 @@ public class StatsController {
     @GetMapping("/{mbid}/stats")
     public ArtistStatsResponse artistStats(@PathVariable UUID mbid) {
         requireArtist(mbid);
-        long festival = showRepository.countByArtist_MbidAndShowType(mbid, ShowType.FESTIVAL);
-        long solo = showRepository.countByArtist_MbidAndShowType(mbid, ShowType.SOLO);
-        long unknown = showRepository.countByArtist_Mbid(mbid) - festival - solo;
+        // 곡 0건 공연은 제외 — yearlyActivity와 같은 분모라야 유형 분포와 연도별 합계가 일치한다
+        long festival = showRepository
+                .countByArtist_MbidAndShowTypeAndSongCountGreaterThan(mbid, ShowType.FESTIVAL, (short) 0);
+        long solo = showRepository
+                .countByArtist_MbidAndShowTypeAndSongCountGreaterThan(mbid, ShowType.SOLO, (short) 0);
+        long unknown = showRepository.countByArtist_MbidAndSongCountGreaterThan(mbid, (short) 0)
+                - festival - solo;
         return ArtistStatsResponse.from(showRepository.yearlyActivity(mbid), festival, solo, unknown);
     }
 

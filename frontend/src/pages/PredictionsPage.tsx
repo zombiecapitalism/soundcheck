@@ -38,13 +38,17 @@ export default function PredictionsPage() {
   const { data: expected } = useExpectedSetlist(eventId, view === 'timeline')
   const setSize = expectedSetSize(artist?.recentShows.avgSongCount, predictions ?? [])
   const predictionsByKey = new Map(predictions?.map((p) => [p.songKey, p]) ?? [])
-  // 예상 순서 뷰: 백엔드 블록 순서대로 예측 행을 배열. 앙코르 시작 인덱스에 구분선을 넣는다
-  const timelineRows = expected
-    ? [...expected.main, ...expected.encore]
-        .map((item) => predictionsByKey.get(item.songKey))
-        .filter((p): p is NonNullable<typeof p> => p != null)
-    : undefined
-  const encoreStartIndex = expected && expected.encore.length > 0 ? expected.main.length : null
+  // 예상 순서 뷰: 백엔드 블록 순서대로 예측 행을 배열. 앙코르 시작 인덱스에 구분선을 넣는다.
+  // 두 쿼리(expected/predictions) 스냅샷이 어긋나 곡이 빠질 수 있으므로 블록별로 필터한 뒤
+  // 경계를 계산해야 구분선이 밀리지 않는다
+  const toRows = (items: { songKey: string }[]) =>
+    items
+      .map((item) => predictionsByKey.get(item.songKey))
+      .filter((p): p is NonNullable<typeof p> => p != null)
+  const mainRows = expected ? toRows(expected.main) : undefined
+  const encoreRows = expected ? toRows(expected.encore) : undefined
+  const timelineRows = mainRows && encoreRows ? [...mainRows, ...encoreRows] : undefined
+  const encoreStartIndex = encoreRows && encoreRows.length > 0 ? mainRows!.length : null
   // 예습 코스 — 필수/추천/심화 구분과 규칙 기반 추천 이유(E7)
   const course = COURSES.find((c) => c.id === courseId) ?? COURSES[1]
   const courseSongs = view === 'course' && predictions ? buildCourse(predictions, course.minutes) : undefined
@@ -179,6 +183,9 @@ export default function PredictionsPage() {
               {event?.expectedShowType === 'FESTIVAL' ? '페스티벌' : '단독'} 평균{' '}
               {expected.expectedSongCount}곡 기준 — 오프너·본편(평균 위치순)·앙코르 블록 구성
             </p>
+          )}
+          {view === 'timeline' && !expected && (
+            <p className="view-hint">예상 순서를 구성하는 중…</p>
           )}
           {progress.total > 0 && (
             <div className="practice-progress">

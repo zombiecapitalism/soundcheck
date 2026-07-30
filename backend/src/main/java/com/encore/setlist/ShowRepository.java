@@ -44,6 +44,14 @@ public interface ShowRepository extends JpaRepository<Show, String> {
 
     long countByArtist_MbidAndShowType(UUID artistMbid, ShowType showType);
 
+    // ---- E5 통계용: 곡 0건 공연(등록만 된 미래 공연)을 제외한 카운트.
+    // yearlyActivity와 분모를 맞추지 않으면 유형 분포 합계와 연도별 합계가 어긋난다.
+
+    long countByArtist_MbidAndSongCountGreaterThan(UUID artistMbid, short songCount);
+
+    long countByArtist_MbidAndShowTypeAndSongCountGreaterThan(UUID artistMbid, ShowType showType,
+                                                              short songCount);
+
     Optional<Show> findFirstByArtist_MbidOrderByEventDateDesc(UUID artistMbid);
 
     /** 공연당 평균 곡 수. 등록만 된 빈 셋리스트(곡 0건)는 통계를 왜곡하므로 제외한다. */

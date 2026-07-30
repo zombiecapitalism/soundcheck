@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -85,7 +86,10 @@ public class Show {
     @Column(name = "collected_at", nullable = false)
     private Instant collectedAt;
 
+    // 위치 통계(E3)·오프너 판정·유사 공연 셋리스트(E11)가 컬렉션 순회 순서를 셋 순서로
+    // 간주한다 — DB 반환 순서(물리 저장 순)에 기대면 VACUUM 등으로 조용히 틀어질 수 있다
     @OneToMany(mappedBy = "show", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("positionTotal asc")
     private List<ShowSong> songs = new ArrayList<>();
 
     @Builder

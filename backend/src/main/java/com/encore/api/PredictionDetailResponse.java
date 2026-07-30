@@ -106,7 +106,8 @@ public record PredictionDetailResponse(
 
     public static PredictionDetailResponse from(Prediction prediction, List<Show> sampleShows) {
         Evidence evidence = EvidenceJson.parse(prediction.getEvidence());
-        Map<String, Double> weightBySetlistId = evidence == null
+        // appearances 키만 빠진 손상 JSON도 파싱은 성공한다 — 근거 표시만 포기하고 죽지 않는다
+        Map<String, Double> weightBySetlistId = evidence == null || evidence.appearances() == null
                 ? Map.of()
                 : evidence.appearances().stream()
                         .collect(Collectors.toMap(Appearance::setlistId, Appearance::weight,

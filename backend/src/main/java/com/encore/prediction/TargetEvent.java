@@ -92,11 +92,6 @@ public class TargetEvent {
         this.actualSetlist = actualSetlist;
     }
 
-    /** 예측 재계산 직후에만 호출 — 변화가 없어졌으면 null로 지워 낡은 요약이 남지 않게 한다. */
-    public void updateTrendSummary(String summary, Instant at) {
-        this.trendSummary = summary;
-        this.trendSummaryAt = summary != null ? at : null;
-    }
 
     public boolean isVerifiable() {
         return actualSetlist != null;

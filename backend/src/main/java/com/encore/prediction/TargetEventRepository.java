@@ -1,9 +1,12 @@
 package com.encore.prediction;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -17,6 +20,27 @@ public interface TargetEventRepository extends JpaRepository<TargetEvent, Long> 
     /** 목록 응답에 아티스트 이름이 필요하므로 fetch join — open-in-view가 꺼져 있어 지연 로딩이 안 된다. */
     @Query("select e from TargetEvent e join fetch e.artist order by e.eventDate asc, e.id asc")
     List<TargetEvent> findAllWithArtist();
+
+    /**
+     * 아티스트 이름까지 필요한 단건 조회(Chat 프롬프트·변화 요약) — open-in-view가 꺼져 있어
+     * 트랜잭션 밖에서 getArtist().getName()을 부르면 LazyInitializationException이 난다.
+     */
+    @Query("select e from TargetEvent e join fetch e.artist where e.id = :id")
+    Optional<TargetEvent> findByIdWithArtist(@Param("id") Long id);
+
+    /**
+     * 변화 요약 저장(E4) — 벌크 UPDATE라 엔티티 로드 없이 짧은 트랜잭션으로 끝난다.
+     * LLM 호출을 트랜잭션 밖에 두기 위한 분리(TrendSummaryService 참고).
+     */
+    @Modifying
+    @Transactional
+    @Query("""
+            update TargetEvent e
+            set e.trendSummary = :summary, e.trendSummaryAt = :at
+            where e.id = :id
+            """)
+    void updateTrendSummary(@Param("id") Long id, @Param("summary") String summary,
+                            @Param("at") Instant at);
 
     /** 공연이 끝났는데 아직 실제 셋리스트가 연결되지 않은 이벤트 — 적중률 매칭 대상. */
     List<TargetEvent> findByEventDateBeforeAndActualSetlistIsNull(LocalDate date);

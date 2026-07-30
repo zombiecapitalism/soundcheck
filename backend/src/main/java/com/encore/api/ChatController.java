@@ -50,7 +50,8 @@ public class ChatController {
     public Flux<ServerSentEvent<String>> chat(@PathVariable Long id,
                                               @RequestBody ChatRequest request,
                                               HttpServletRequest httpRequest) {
-        TargetEvent event = targetEventRepository.findById(id)
+        // 프롬프트가 아티스트 "이름"을 쓴다 — 트랜잭션 밖 지연 로딩이 안 되므로 fetch join 필수
+        TargetEvent event = targetEventRepository.findByIdWithArtist(id)
                 .orElseThrow(() -> new ApiNotFoundException("존재하지 않는 이벤트입니다: " + id));
         validate(request);
         // 비용 가드: IP·이벤트당 분당 제한 — Chat은 캐시 불가능한 유일한 변동 비용원
@@ -77,9 +78,17 @@ public class ChatController {
         if (request == null || request.messages() == null || request.messages().isEmpty()) {
             throw new IllegalArgumentException("메시지가 비어 있습니다");
         }
+        // 공개 API — 이력 중간의 null content/이상한 role이 그대로 모델 메시지로 가면 NPE 500이 된다
+        for (ChatMessage message : request.messages()) {
+            if (message == null || message.content() == null || message.content().isBlank()
+                    || !("user".equals(message.role()) || "assistant".equals(message.role()))) {
+                throw new IllegalArgumentException(
+                        "메시지는 user/assistant role과 비어 있지 않은 content가 필요합니다");
+            }
+        }
         ChatMessage last = request.messages().getLast();
-        if (!"user".equals(last.role()) || last.content() == null || last.content().isBlank()) {
-            throw new IllegalArgumentException("마지막 메시지는 비어 있지 않은 user 질문이어야 합니다");
+        if (!"user".equals(last.role())) {
+            throw new IllegalArgumentException("마지막 메시지는 user 질문이어야 합니다");
         }
         if (last.content().length() > ChatService.MAX_QUESTION_CHARS) {
             throw new IllegalArgumentException(
@@ -87,11 +96,16 @@ public class ChatController {
         }
     }
 
-    /** 리버스 프록시(nginx) 뒤에서는 X-Forwarded-For의 첫 IP가 실제 클라이언트다. */
+    /**
+     * 레이트리밋 키용 클라이언트 IP. X-Forwarded-For의 **마지막** 항목을 쓴다 —
+     * 첫 항목은 클라이언트가 임의 헤더로 위조해 제한을 우회할 수 있고(append 방식 프록시),
+     * 마지막 항목은 우리 앞의 신뢰 프록시(nginx) 1홉이 직접 본 주소다.
+     */
     private static String clientIp(HttpServletRequest request) {
         String forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].strip();
+            String[] hops = forwarded.split(",");
+            return hops[hops.length - 1].strip();
         }
         return request.getRemoteAddr();
     }

@@ -29,6 +29,7 @@ import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -410,6 +411,40 @@ class ApiIntegrationTest {
                 .andExpect(jsonPath("$.expectedSongCount").value(0))
                 .andExpect(jsonPath("$.main.length()").value(0))
                 .andExpect(jsonPath("$.encore.length()").value(0));
+    }
+
+    /** Chat(E8) 요청 검증 — 유효하지 않은 요청은 모델 호출 전에 400/404로 끊어야 한다(비용 가드). */
+    @Test
+    void chatRejectsInvalidRequestsBeforeModelCall() throws Exception {
+        TargetEvent event = persistEvent("챗 이벤트", LocalDate.of(2026, 10, 2));
+        String json = "application/json";
+
+        // 마지막 메시지가 user가 아님
+        mockMvc.perform(post("/api/events/{id}/chat", event.getId()).contentType(json)
+                        .content("""
+                                {"messages":[{"role":"assistant","content":"안녕"}]}"""))
+                .andExpect(status().isBadRequest());
+        // 이력 중간의 null content — 그대로 모델 메시지로 가면 NPE 500이 된다
+        mockMvc.perform(post("/api/events/{id}/chat", event.getId()).contentType(json)
+                        .content("""
+                                {"messages":[{"role":"assistant","content":null},
+                                             {"role":"user","content":"질문"}]}"""))
+                .andExpect(status().isBadRequest());
+        // 질문 길이 제한 초과
+        mockMvc.perform(post("/api/events/{id}/chat", event.getId()).contentType(json)
+                        .content("""
+                                {"messages":[{"role":"user","content":"%s"}]}"""
+                                .formatted("가".repeat(501))))
+                .andExpect(status().isBadRequest());
+        // 빈 메시지 목록
+        mockMvc.perform(post("/api/events/{id}/chat", event.getId()).contentType(json)
+                        .content("{\"messages\":[]}"))
+                .andExpect(status().isBadRequest());
+        // 존재하지 않는 이벤트
+        mockMvc.perform(post("/api/events/999999/chat").contentType(json)
+                        .content("""
+                                {"messages":[{"role":"user","content":"질문"}]}"""))
+                .andExpect(status().isNotFound());
     }
 
     /** E5 통계 시드: 연도·투어·유형이 갈리는 3회 공연. holy wars는 마지막 공연에서 tape다. */

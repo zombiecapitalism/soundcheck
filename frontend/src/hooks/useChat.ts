@@ -105,7 +105,12 @@ export function useChat(eventId: number) {
             sources = JSON.parse(sse.data) as ExplanationSource[]
           } else if (sse.event === 'done') {
             finished = true
-            update('idle')
+            // delta 없이 done만 오면(모델 빈 응답) 질문만 남고 아무 표시가 없다 — 오류로 알린다
+            if (answer) {
+              update('idle')
+            } else {
+              update('error', '답변을 받지 못했어요. 다시 시도해 주세요.')
+            }
           } else if (sse.event === 'error') {
             finished = true
             update('error', JSON.parse(sse.data) as string)
@@ -113,8 +118,12 @@ export function useChat(eventId: number) {
         }
       }
       if (!finished) {
-        // done 없이 스트림이 끝남 — 받은 만큼은 보여주되 완료로 처리
-        update('idle')
+        // done 없이 스트림이 끊김 — 받은 게 있으면 그만큼 보여주고, 없으면 오류로 알린다
+        if (answer) {
+          update('idle')
+        } else {
+          update('error', '연결이 끊겼어요. 다시 시도해 주세요.')
+        }
       }
     } catch (e) {
       if (!controller.signal.aborted) {
