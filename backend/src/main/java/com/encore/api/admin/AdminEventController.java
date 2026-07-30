@@ -2,6 +2,7 @@ package com.encore.api.admin;
 
 import com.encore.api.ApiNotFoundException;
 import com.encore.artist.Artist;
+import com.encore.common.KoreaTime;
 import com.encore.artist.ArtistRepository;
 import com.encore.pipeline.CollectionPipeline;
 import com.encore.prediction.PredictionRepository;
@@ -44,6 +45,12 @@ public class AdminEventController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CreatedEvent create(@Valid @RequestBody CreateEventRequest request) {
+        // 지난 공연은 예측 스냅샷을 만들 수 없다(사후 예측은 공연 이후 데이터가 새는 것) —
+        // 검증됐는데 성적이 없는 유령 이벤트가 되므로 등록 자체를 거부한다.
+        if (request.eventDate().isBefore(KoreaTime.today())) {
+            throw new IllegalArgumentException(
+                    "지난 날짜의 이벤트는 등록할 수 없습니다: " + request.eventDate());
+        }
         Artist artist = artistRepository.findById(request.artistMbid())
                 .orElseThrow(() -> new ApiNotFoundException("등록되지 않은 아티스트입니다: " + request.artistMbid()));
 

@@ -4,6 +4,7 @@ import com.encore.TestcontainersConfiguration;
 import com.encore.artist.Artist;
 import com.encore.artist.ArtistRepository;
 import com.encore.batch.BatchLock;
+import com.encore.common.KoreaTime;
 import com.encore.setlist.Show;
 import com.encore.setlist.ShowSong;
 import com.encore.setlist.ShowType;
@@ -136,8 +137,9 @@ class AdminApiIntegrationTest {
         entityManager.persist(show);
         entityManager.flush();
 
+        // 미래 고정 날짜(2099) — 과거 날짜 등록이 거부되므로 실행 시점과 무관해야 한다
         String body = """
-                {"artistMbid":"%s","eventName":"2026 부산국제록페스티벌","eventDate":"2026-10-02",
+                {"artistMbid":"%s","eventName":"2026 부산국제록페스티벌","eventDate":"2099-10-02",
                  "venueName":"삼락생태공원","expectedShowType":"FESTIVAL"}
                 """.formatted(artist.getMbid());
 
@@ -161,7 +163,7 @@ class AdminApiIntegrationTest {
         Artist artist = artistRepository.saveAndFlush(Artist.builder()
                 .mbid(UUID.randomUUID()).name("Megadeth").target(true).build());
         String body = """
-                {"artistMbid":"%s","eventName":"이상한 이벤트","eventDate":"2026-10-02",
+                {"artistMbid":"%s","eventName":"이상한 이벤트","eventDate":"2099-10-02",
                  "expectedShowType":"UNKNOWN"}
                 """.formatted(artist.getMbid());
 
@@ -169,6 +171,26 @@ class AdminApiIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("SOLO 또는 FESTIVAL")));
+    }
+
+    /**
+     * 지난 날짜의 이벤트는 등록할 수 없다 — 예측 스냅샷을 만들 수 없어 목록에도
+     * 아카이브에도 나오지 않는 유령 이벤트가 되기 때문. 당일(KST)은 허용이다.
+     */
+    @Test
+    void rejectsPastEventDate() throws Exception {
+        Artist artist = artistRepository.saveAndFlush(Artist.builder()
+                .mbid(UUID.randomUUID()).name("Megadeth").target(true).build());
+        String body = """
+                {"artistMbid":"%s","eventName":"어제의 공연","eventDate":"%s",
+                 "expectedShowType":"SOLO"}
+                """.formatted(artist.getMbid(), KoreaTime.today().minusDays(1));
+
+        mockMvc.perform(post("/api/admin/events").with(httpBasic(USER, PASS))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("지난 날짜")));
+        assertThat(targetEventRepository.count()).isZero();
     }
 
     /** 내한 감지 — KR 미래 공연만 잡히고, 이미 이벤트로 등록된 것은 플래그로 구분된다. */
