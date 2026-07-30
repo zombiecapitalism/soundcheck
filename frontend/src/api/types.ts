@@ -151,6 +151,13 @@ export interface AccuracySummary {
   top10Size: number
 }
 
+/** 예상 셋리스트(E6) — 본편/앙코르 블록. order는 본편에 이어지는 전체 순번. */
+export interface ExpectedSetlist {
+  expectedSongCount: number
+  main: { order: number; songKey: string; songName: string; probability: number }[]
+  encore: { order: number; songKey: string; songName: string; probability: number }[]
+}
+
 /** 곡의 장기 통계(E5) — 예측 표본(최근 20회)과 달리 수집된 전체 공연 대상. */
 export interface SongStats {
   yearly: { year: number; totalShows: number; playedShows: number }[]

@@ -164,6 +164,23 @@ GET /api/events/accuracy
    "top5Hits": 4, "top5Size": 5, "top10Hits": 8, "top10Size": 10 }]
 ```
 
+### API-04a 예상 셋리스트 (E6)
+
+```
+GET /api/events/{id}/expected-setlist
+```
+
+본편/앙코르 블록 구조. 저장하지 않고 조회 시 `SetlistComposer`(순수 함수)가 구성한다. 이벤트 없음 404, 예측 전이면 빈 블록.
+
+```json
+{ "expectedSongCount": 18,
+  "main":   [{ "order": 1, "songKey": "opener song", "songName": "Opener Song", "probability": 0.9 }],
+  "encore": [{ "order": 18, "songKey": "encore hit", "songName": "Encore Hit", "probability": 0.8 }] }
+```
+
+- 곡 수 = 유형별 평균 곡 수(없으면 전체 평균, 그마저 없으면 확률 ≥ 0.5 곡 수) 반올림.
+- 구성: 확률 상위 선발 → 앙코르 = encoreRatio ≥ 0.5(비율 내림차순, 최대 3) → 오프너 = 오프너 비율 최상위 고정 → 본편 = 평균 위치 오름차순. 동률은 rank로 결정적.
+
 ### API-06a 곡 장기 통계 (E5)
 
 ```

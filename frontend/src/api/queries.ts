@@ -55,6 +55,15 @@ export function useAccuracyArchive() {
   return useQuery({ queryKey: ['accuracy-archive'], queryFn: api.accuracyArchive })
 }
 
+/** 예상 셋리스트(E6) — "예상 순서" 보기 전환 시에만 조회한다. */
+export function useExpectedSetlist(eventId: number, enabled: boolean) {
+  return useQuery({
+    queryKey: ['events', eventId, 'expected-setlist'],
+    queryFn: () => api.expectedSetlist(eventId),
+    enabled: Number.isFinite(eventId) && enabled,
+  })
+}
+
 /** 곡 장기 통계(E5) — 곡 상세 차트용. 404(연주 기록 없음)는 화면에서 섹션 생략. */
 export function useSongStats(mbid: string | undefined, songKey: string) {
   return useQuery({

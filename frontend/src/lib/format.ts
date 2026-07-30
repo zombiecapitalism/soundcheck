@@ -79,23 +79,6 @@ export function expectedSetSize(
   return Math.min(likely > 0 ? likely : 20, predictions.length)
 }
 
-/**
- * 예상 셋리스트(타임라인 순서) — 확률 상위 size곡을 골라 평균 등장 위치순으로 배열한다.
- * "처음 곡부터 마지막 곡까지 순서대로 예습"하는 뷰의 근거. 위치 정보가 없는 곡은 맨 뒤,
- * 동률은 rank(확률순)로 결정적이게.
- */
-export function buildExpectedSetlist<
-  T extends { rank: number; probability: number; avgPosition: number | null },
->(predictionsByRank: T[], size: number): T[] {
-  return predictionsByRank
-    .slice(0, Math.max(1, size))
-    .toSorted((a, b) => {
-      const posA = a.avgPosition ?? Number.POSITIVE_INFINITY
-      const posB = b.avgPosition ?? Number.POSITIVE_INFINITY
-      return posA !== posB ? posA - posB : a.rank - b.rank
-    })
-}
-
 /** 신뢰도 라벨 → 화면 문구 (E1). */
 export function confidenceText(confidence: Confidence): string {
   return {

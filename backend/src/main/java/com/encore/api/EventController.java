@@ -1,9 +1,12 @@
 package com.encore.api;
 
 import com.encore.prediction.AccuracyCalculator;
+import com.encore.prediction.EvidenceJson;
 import com.encore.prediction.Prediction;
+import com.encore.prediction.PredictionCalculator.Evidence;
 import com.encore.prediction.PredictionRepository;
 import com.encore.prediction.PredictionSampling;
+import com.encore.prediction.SetlistComposer;
 import com.encore.prediction.TargetEvent;
 import com.encore.prediction.TargetEventRepository;
 import com.encore.setlist.Show;
@@ -14,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/events")
@@ -92,6 +96,56 @@ public class EventController {
                 .toList();
         return PredictionDetailResponse.from(prediction,
                 PredictionSampling.sample(shows, prediction.getSampleSize()));
+    }
+
+    /**
+     * 예상 셋리스트(E6) — 본편/앙코르 블록 구조. 저장하지 않고 조회 시 구성한다.
+     * 곡 수는 유형별 평균(없으면 전체 평균, 그마저 없으면 확률 ≥ 0.5 곡 수)을 반올림.
+     * 예측이 아직 없으면 빈 블록(목록 API와 같은 "준비 중" 계약).
+     */
+    @GetMapping("/{id}/expected-setlist")
+    public ExpectedSetlistResponse expectedSetlist(@PathVariable Long id) {
+        TargetEvent event = targetEventRepository.findById(id)
+                .orElseThrow(() -> new ApiNotFoundException("존재하지 않는 이벤트입니다: " + id));
+        List<Prediction> predictions = predictionRepository.findByTargetEvent_IdOrderByRankAsc(id);
+        if (predictions.isEmpty()) {
+            return ExpectedSetlistResponse.from(
+                    SetlistComposer.compose(List.of(), 0), 0);
+        }
+
+        UUID mbid = event.getArtist().getMbid();
+        Double avg = showRepository.averageSongCountByType(mbid, event.getExpectedShowType());
+        if (avg == null) {
+            avg = showRepository.averageSongCount(mbid);
+        }
+        long likely = predictions.stream()
+                .filter(p -> p.getProbability().doubleValue() >= 0.5)
+                .count();
+        int expectedSongCount = avg != null
+                ? (int) Math.round(avg)
+                : (int) Math.max(likely, 1);
+
+        List<SetlistComposer.Entry> entries = predictions.stream()
+                .map(EventController::toComposerEntry)
+                .toList();
+        return ExpectedSetlistResponse.from(
+                SetlistComposer.compose(entries, expectedSongCount), expectedSongCount);
+    }
+
+    private static SetlistComposer.Entry toComposerEntry(Prediction prediction) {
+        Evidence evidence = EvidenceJson.parse(prediction.getEvidence());
+        Double openerRate = evidence != null && evidence.positionStats() != null
+                && prediction.getPlayedCount() > 0
+                ? (double) evidence.positionStats().opener() / prediction.getPlayedCount()
+                : null;
+        return new SetlistComposer.Entry(
+                prediction.getRank(),
+                prediction.getSongKey(),
+                prediction.getSongName(),
+                prediction.getProbability(),
+                prediction.getAvgPosition(),
+                prediction.getEncoreRatio(),
+                openerRate);
     }
 
     /**

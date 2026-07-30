@@ -356,6 +356,62 @@ class ApiIntegrationTest {
                 .andExpect(jsonPath("$.status").value(404));
     }
 
+    /** E6 예상 셋리스트 — 유형별 평균 곡 수만큼 뽑아 본편(위치순)/앙코르 블록으로 나눈다. */
+    @Test
+    void composesExpectedSetlistFromPredictions() throws Exception {
+        TargetEvent event = persistEvent("2026 부산국제록페스티벌", LocalDate.of(2026, 10, 2));
+        persistShow("exp-s1", LocalDate.of(2026, 6, 1), ShowType.FESTIVAL, 3); // 페스티벌 평균 3곡
+        predictionRepository.saveAll(List.of(
+                Prediction.builder()
+                        .targetEvent(event).songKey("closer").songName("Closer")
+                        .probability(new BigDecimal("0.9500")).rank((short) 1)
+                        .playedCount((short) 19).sampleSize((short) 20)
+                        .avgPosition(new BigDecimal("9.0")).encoreRatio(new BigDecimal("0.0000"))
+                        .build(),
+                Prediction.builder()
+                        .targetEvent(event).songKey("opener song").songName("Opener Song")
+                        .probability(new BigDecimal("0.9000")).rank((short) 2)
+                        .playedCount((short) 18).sampleSize((short) 20)
+                        .avgPosition(new BigDecimal("1.0")).encoreRatio(new BigDecimal("0.0000"))
+                        .build(),
+                Prediction.builder()
+                        .targetEvent(event).songKey("encore song").songName("Encore Song")
+                        .probability(new BigDecimal("0.8500")).rank((short) 3)
+                        .playedCount((short) 17).sampleSize((short) 20)
+                        .avgPosition(new BigDecimal("10.0")).encoreRatio(new BigDecimal("0.8000"))
+                        .build(),
+                Prediction.builder()
+                        .targetEvent(event).songKey("left out").songName("Left Out")
+                        .probability(new BigDecimal("0.3000")).rank((short) 4)
+                        .playedCount((short) 6).sampleSize((short) 20)
+                        .build()));
+        entityManager.flush();
+
+        mockMvc.perform(get("/api/events/{id}/expected-setlist", event.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.expectedSongCount").value(3))
+                // 본편은 평균 위치순(evidence 없어 오프너 고정은 생략), 앙코르는 별도 블록
+                .andExpect(jsonPath("$.main.length()").value(2))
+                .andExpect(jsonPath("$.main[0].songKey").value("opener song"))
+                .andExpect(jsonPath("$.main[0].order").value(1))
+                .andExpect(jsonPath("$.main[1].songKey").value("closer"))
+                .andExpect(jsonPath("$.encore.length()").value(1))
+                .andExpect(jsonPath("$.encore[0].songKey").value("encore song"))
+                .andExpect(jsonPath("$.encore[0].order").value(3));
+    }
+
+    /** 예측 전이면 빈 블록 — 목록 API와 같은 "준비 중" 계약. */
+    @Test
+    void expectedSetlistIsEmptyBeforePredictions() throws Exception {
+        TargetEvent event = persistEvent("예측 전 이벤트", LocalDate.of(2026, 10, 2));
+
+        mockMvc.perform(get("/api/events/{id}/expected-setlist", event.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.expectedSongCount").value(0))
+                .andExpect(jsonPath("$.main.length()").value(0))
+                .andExpect(jsonPath("$.encore.length()").value(0));
+    }
+
     /** E5 통계 시드: 연도·투어·유형이 갈리는 3회 공연. holy wars는 마지막 공연에서 tape다. */
     private void persistStatsShows() {
         record Spec(String id, LocalDate date, ShowType type, String tour, boolean tape) {

@@ -1,12 +1,11 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Link, useParams } from 'react-router'
-import { useAccuracy, useArtist, useEvent, usePredictions } from '../api/queries'
+import { useAccuracy, useArtist, useEvent, useExpectedSetlist, usePredictions } from '../api/queries'
 import ProbabilityBar from '../components/ProbabilityBar'
 import StatusView from '../components/StatusView'
 import { usePracticeChecklist } from '../hooks/usePracticeChecklist'
 import { practiceProgress } from '../lib/practice'
 import {
-  buildExpectedSetlist,
   evidenceText,
   expectedSetSize,
   formatEventDate,
@@ -25,11 +24,19 @@ export default function PredictionsPage() {
   const { data: predictions, isPending, isError, error, refetch } = usePredictions(eventId)
   const { data: accuracy } = useAccuracy(eventId, event?.verified ?? false)
   const playedByKey = new Map(accuracy?.results.map((r) => [r.songKey, r.played]) ?? [])
-  // 보기 전환: 확률순(기본) vs 예상 순서(처음 곡부터 순서대로 예습하는 뷰)
+  // 보기 전환: 확률순(기본) vs 예상 순서(백엔드가 본편/앙코르 블록으로 구성 — E6)
   const [view, setView] = useState<'probability' | 'timeline'>('probability')
+  const { data: expected } = useExpectedSetlist(eventId, view === 'timeline')
   const setSize = expectedSetSize(artist?.recentShows.avgSongCount, predictions ?? [])
-  const displayed =
-    view === 'timeline' && predictions ? buildExpectedSetlist(predictions, setSize) : predictions
+  const predictionsByKey = new Map(predictions?.map((p) => [p.songKey, p]) ?? [])
+  // 예상 순서 뷰: 백엔드 블록 순서대로 예측 행을 배열. 앙코르 시작 인덱스에 구분선을 넣는다
+  const timelineRows = expected
+    ? [...expected.main, ...expected.encore]
+        .map((item) => predictionsByKey.get(item.songKey))
+        .filter((p): p is NonNullable<typeof p> => p != null)
+    : undefined
+  const encoreStartIndex = expected && expected.encore.length > 0 ? expected.main.length : null
+  const displayed = view === 'timeline' ? timelineRows : predictions
   // 예습 체크 — 기기 로컬 상태(localStorage)
   const { checkedKeys, toggle } = usePracticeChecklist(eventId)
   const progress = practiceProgress(predictions ?? [], checkedKeys, setSize)
@@ -118,9 +125,10 @@ export default function PredictionsPage() {
               예상 순서
             </button>
           </div>
-          {view === 'timeline' && (
+          {view === 'timeline' && expected && (
             <p className="view-hint">
-              확률 상위 {setSize}곡을 평균 등장 위치순으로 배열 — 처음 곡부터 순서대로 예습하는 뷰
+              {event?.expectedShowType === 'FESTIVAL' ? '페스티벌' : '단독'} 평균{' '}
+              {expected.expectedSongCount}곡 기준 — 오프너·본편(평균 위치순)·앙코르 블록 구성
             </p>
           )}
           {progress.total > 0 && (
@@ -143,9 +151,12 @@ export default function PredictionsPage() {
               const practiced = checkedKeys.has(prediction.songKey)
               const trend = trendBadge(prediction.trend)
               return (
-                // 체크 버튼은 링크의 형제다 — 앵커 안에 인터랙티브 요소를 두면 HTML 비준수
+                <Fragment key={prediction.songKey}>
+                {view === 'timeline' && index === encoreStartIndex && (
+                  <li className="encore-divider">Encore</li>
+                )}
+                {/* 체크 버튼은 링크의 형제다 — 앵커 안에 인터랙티브 요소를 두면 HTML 비준수 */}
                 <li
-                  key={prediction.songKey}
                   className={practiced ? 'prediction-item practiced' : 'prediction-item'}
                 >
                   <Link
@@ -192,6 +203,7 @@ export default function PredictionsPage() {
                     ✓
                   </button>
                 </li>
+                </Fragment>
               )
             })}
           </ol>

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   boostEffectText,
-  buildExpectedSetlist,
   confidenceText,
   dDayText,
   evidenceText,
@@ -112,40 +111,6 @@ describe('expectedSetSize', () => {
   it('그마저 없으면 20 (예측 수 상한)', () => {
     const low = [{ probability: 0.3 }, { probability: 0.2 }]
     expect(expectedSetSize(null, low)).toBe(2)
-  })
-})
-
-describe('buildExpectedSetlist', () => {
-  const prediction = (rank: number, probability: number, avgPosition: number | null) => ({
-    rank,
-    probability,
-    avgPosition,
-  })
-
-  it('확률 상위 size곡을 평균 위치순으로 배열한다', () => {
-    const byRank = [
-      prediction(1, 0.95, 10), // 확률 1위지만 보통 10번째
-      prediction(2, 0.9, 1), // 오프너
-      prediction(3, 0.85, 5),
-      prediction(4, 0.3, 2), // size 밖 — 제외돼야 한다
-    ]
-    expect(buildExpectedSetlist(byRank, 3).map((p) => p.rank)).toEqual([2, 3, 1])
-  })
-
-  it('위치 정보가 없는 곡은 맨 뒤로 보낸다', () => {
-    const byRank = [prediction(1, 0.9, null), prediction(2, 0.8, 4)]
-    expect(buildExpectedSetlist(byRank, 2).map((p) => p.rank)).toEqual([2, 1])
-  })
-
-  it('위치 동률은 확률순(rank)으로 결정적이다', () => {
-    const byRank = [prediction(2, 0.8, 5), prediction(1, 0.9, 5)]
-    expect(buildExpectedSetlist(byRank, 2).map((p) => p.rank)).toEqual([1, 2])
-  })
-
-  it('원본 배열을 바꾸지 않는다', () => {
-    const byRank = [prediction(1, 0.9, 9), prediction(2, 0.8, 1)]
-    buildExpectedSetlist(byRank, 2)
-    expect(byRank.map((p) => p.rank)).toEqual([1, 2])
   })
 })
 

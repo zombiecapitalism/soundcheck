@@ -1060,3 +1060,14 @@ select:focus {
   color: var(--text-muted);
   margin-bottom: 4px;
 }
+
+/* 예상 셋리스트 앙코르 구분선 (E6) */
+.encore-divider {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  padding: 12px 0 4px;
+  border-bottom: none;
+}
