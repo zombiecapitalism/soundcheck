@@ -11,7 +11,6 @@ import com.encore.rag.client.WikipediaPage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.encore.llm.LlmCallRecorder;
-import com.encore.llm.LlmCallType;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingResponse;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -153,10 +152,7 @@ public class RagIngester {
         long embedStart = System.currentTimeMillis();
         EmbeddingResponse embeddingResponse = embeddingModel.embedForResponse(
                 chunks.stream().map(RagChunker.Chunk::content).toList());
-        llmCallRecorder.recordUsage(LlmCallType.EMBEDDING,
-                embeddingResponse.getMetadata() != null ? embeddingResponse.getMetadata().getModel() : null,
-                embeddingResponse.getMetadata() != null ? embeddingResponse.getMetadata().getUsage() : null,
-                System.currentTimeMillis() - embedStart);
+        llmCallRecorder.recordEmbedding(embeddingResponse, System.currentTimeMillis() - embedStart);
         List<float[]> embeddings = embeddingResponse.getResults().stream()
                 .map(embedding -> embedding.getOutput())
                 .toList();

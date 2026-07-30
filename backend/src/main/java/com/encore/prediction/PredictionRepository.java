@@ -20,6 +20,9 @@ public interface PredictionRepository extends JpaRepository<Prediction, Long> {
     /** 곡 설명 요청 검증용 — 예측에 등장한 곡인지. 임의 songKey로 임베딩·LLM 비용이 새는 것을 막는다. */
     boolean existsByTargetEvent_Artist_MbidAndSongKey(UUID artistMbid, String songKey);
 
+    /** 적중률 아카이브용 일괄 로드 — 이벤트마다 쿼리 1개씩 나가는 N+1을 막는다. */
+    List<Prediction> findByTargetEvent_IdInOrderByTargetEvent_IdAscRankAsc(List<Long> targetEventIds);
+
     /**
      * 곡 설명(E-RAG)의 원본 곡명 조회 — 곡명을 클라이언트 파라미터로 받으면 임의 텍스트가
      * LLM 프롬프트에 들어가고 그 결과가 공용 캐시에 고정된다(프롬프트 주입·캐시 오염).

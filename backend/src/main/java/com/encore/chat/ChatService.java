@@ -15,7 +15,6 @@ import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 /**
@@ -66,35 +65,14 @@ public class ChatService {
                     : new UserMessage(message.content()));
         }
 
-        long start = System.currentTimeMillis();
-        // 완료·오류·취소 중 정확히 한 번만 기록한다 — 클라이언트가 스트림을 끊어도(취소)
-        // 토큰 비용은 이미 발생했으므로 계측에서 빠지면 안 된다(E9)
-        AtomicBoolean recorded = new AtomicBoolean();
-        Flux<String> tokens = chatClient.prompt()
-                .system(ChatPrompts.system(event.getArtist().getName(), event.getEventName()))
-                .messages(history)
-                .tools(tools)
-                .stream()
-                .content()
-                // 스트리밍이라 usage가 없다 — 지연·성공 여부만 계측(E9). 캐시 불가 유형이라 전 호출 기록
-                .doOnError(e -> {
-                    if (recorded.compareAndSet(false, true)) {
-                        llmCallRecorder.recordError(LlmCallType.CHAT, null,
-                                System.currentTimeMillis() - start, e.getMessage());
-                    }
-                })
-                .doOnComplete(() -> {
-                    if (recorded.compareAndSet(false, true)) {
-                        llmCallRecorder.record(LlmCallType.CHAT, null, null, null,
-                                System.currentTimeMillis() - start, false, null);
-                    }
-                })
-                .doOnCancel(() -> {
-                    if (recorded.compareAndSet(false, true)) {
-                        llmCallRecorder.recordCancelled(LlmCallType.CHAT,
-                                System.currentTimeMillis() - start);
-                    }
-                });
+        // 캐시 불가 유형이라 전 호출을 계측한다(E9) — 완료·오류·취소 1회 기록은 recorder가 보장
+        Flux<String> tokens = llmCallRecorder.instrumentStream(LlmCallType.CHAT,
+                chatClient.prompt()
+                        .system(ChatPrompts.system(event.getArtist().getName(), event.getEventName()))
+                        .messages(history)
+                        .tools(tools)
+                        .stream()
+                        .content());
         return new ChatStream(tokens, tools::usedSources);
     }
 }

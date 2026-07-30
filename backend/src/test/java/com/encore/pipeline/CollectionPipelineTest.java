@@ -86,7 +86,7 @@ class CollectionPipelineTest {
                 new BatchLock(),
                 mock(AsyncTaskExecutor.class));
 
-        List<CollectionLog> logs = pipeline.matchAndPredict();
+        List<CollectionLog> logs = pipeline.tryMatchAndPredict().orElseThrow();
         entityManager.flush();
         entityManager.clear();
 

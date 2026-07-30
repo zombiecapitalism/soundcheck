@@ -1,7 +1,11 @@
-package com.encore.prediction;
+package com.encore.trend;
+
+import com.encore.prediction.Prediction;
+import com.encore.prediction.PredictionCalculator;
+import com.encore.prediction.TargetEvent;
 
 import com.encore.artist.Artist;
-import com.encore.prediction.TrendChanges.Changes;
+import com.encore.trend.TrendChanges.Changes;
 import com.encore.setlist.ShowType;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;

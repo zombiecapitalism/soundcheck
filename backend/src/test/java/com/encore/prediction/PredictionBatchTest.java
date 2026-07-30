@@ -119,7 +119,8 @@ class PredictionBatchTest {
         Prediction encore = rows.stream()
                 .filter(p -> p.getSongKey().equals("symphony of destruction")).findFirst().orElseThrow();
         assertThat(encore.getEncoreRatio()).isEqualByComparingTo("1.0000");
-        assertThat(encore.getAvgPosition()).isEqualByComparingTo("5.0");
+        // 평균 위치는 실연주 순번(D10) — positionTotal 5여도 s2의 2번째 실연주 곡이다
+        assertThat(encore.getAvgPosition()).isEqualByComparingTo("2.0");
 
         // evidence는 유효한 JSONB로 저장되고 계산 근거를 담는다
         String evidence = (String) entityManager.createNativeQuery(

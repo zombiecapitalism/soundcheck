@@ -1,8 +1,14 @@
-package com.encore.prediction;
+package com.encore.trend;
+
+import com.encore.prediction.Prediction;
+import com.encore.prediction.PredictionRepository;
+import com.encore.prediction.TargetEvent;
+import com.encore.prediction.TargetEventRepository;
+import com.encore.prediction.TrendSummarizer;
 
 import com.encore.llm.LlmCallRecorder;
 import com.encore.llm.LlmCallType;
-import com.encore.prediction.TrendChanges.Changes;
+import com.encore.trend.TrendChanges.Changes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;

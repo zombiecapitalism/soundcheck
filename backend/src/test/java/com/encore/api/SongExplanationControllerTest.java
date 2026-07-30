@@ -83,6 +83,8 @@ class SongExplanationControllerTest {
                 .andExpect(request().asyncStarted())
                 .andReturn();
 
+        // 스트림이 끝나기 전에 본문을 읽으면 잘린다 — async 결과를 기다린다
+        result.getAsyncResult();
         // SSE 응답에는 charset 표기가 없어 기본 Latin-1로 읽히면 한글이 깨진다 — UTF-8 명시
         String body = result.getResponse().getContentAsString(StandardCharsets.UTF_8);
         assertThat(result.getResponse().getContentType()).contains("text/event-stream");
@@ -129,6 +131,8 @@ class SongExplanationControllerTest {
                 .andExpect(request().asyncStarted())
                 .andReturn();
 
+        // 스트림이 끝나기 전에 본문을 읽으면 잘린다 — async 결과를 기다린다
+        result.getAsyncResult();
         String body = result.getResponse().getContentAsString(StandardCharsets.UTF_8);
         assertThat(body).contains("event:error");
         assertThat(body).contains("다시 시도");

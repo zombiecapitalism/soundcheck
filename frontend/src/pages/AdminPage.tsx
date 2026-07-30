@@ -595,7 +595,8 @@ function EventSection({ onCreated }: { onCreated: () => void }) {
       {create.isSuccess && (
         <p className="form-hint">
           등록 완료 (예측: {create.data.predictionStatus === 'SUCCESS' ? '계산됨' : create.data.predictionStatus}
-          {create.data.predictionStatus === 'FAILED' && ' — 수집 완료 후 예측 재계산을 눌러주세요'})
+          {create.data.predictionStatus === 'FAILED' && ' — 수집 완료 후 예측 재계산을 눌러주세요'}
+          {create.data.predictionStatus === 'PENDING' && ' — 배치 실행 중이라 배치가 마저 계산합니다'})
         </p>
       )}
       {create.error && <p className="form-error">{create.error.message}</p>}

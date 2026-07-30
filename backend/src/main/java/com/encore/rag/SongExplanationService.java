@@ -62,36 +62,16 @@ public class SongExplanationService {
 
         List<Source> sources = distinctSources(chunks);
         StringBuilder buffer = new StringBuilder();
-        long start = System.currentTimeMillis();
-        // 완료·오류·취소 중 한 번만 계측 — 클라이언트 이탈(취소)도 비용은 발생했다(E9)
-        java.util.concurrent.atomic.AtomicBoolean recorded = new java.util.concurrent.atomic.AtomicBoolean();
-        Flux<String> tokens = chatClient.prompt()
-                .system(ExplanationPrompts.system())
-                .user(ExplanationPrompts.user(artistName, songName, chunks))
-                .stream()
-                .content()
-                .doOnNext(buffer::append)
-                // 스트리밍이라 usage 메타데이터가 없다 — 토큰 null로 지연·성공 여부만 계측(E9)
-                .doOnError(e -> {
-                    if (recorded.compareAndSet(false, true)) {
-                        llmCallRecorder.recordError(LlmCallType.EXPLANATION, null,
-                                System.currentTimeMillis() - start, e.getMessage());
-                    }
-                })
-                .doOnCancel(() -> {
-                    if (recorded.compareAndSet(false, true)) {
-                        llmCallRecorder.recordCancelled(LlmCallType.EXPLANATION,
-                                System.currentTimeMillis() - start);
-                    }
-                })
+        // 완료·오류·취소 1회 계측은 recorder가 보장 — 여기서는 본문 수집과 캐시 저장만 얹는다
+        Flux<String> tokens = llmCallRecorder.instrumentStream(LlmCallType.EXPLANATION,
+                        chatClient.prompt()
+                                .system(ExplanationPrompts.system())
+                                .user(ExplanationPrompts.user(artistName, songName, chunks))
+                                .stream()
+                                .content()
+                                .doOnNext(buffer::append))
                 // 끝까지 생성된 것만 저장한다 — 중간에 끊긴 스트림은 캐시되지 않는다
-                .doOnComplete(() -> {
-                    if (recorded.compareAndSet(false, true)) {
-                        llmCallRecorder.record(LlmCallType.EXPLANATION, null, null, null,
-                                System.currentTimeMillis() - start, false, null);
-                    }
-                    saveQuietly(artistMbid, songKey, sources, buffer.toString());
-                });
+                .doOnComplete(() -> saveQuietly(artistMbid, songKey, sources, buffer.toString()));
         return new Explanation(sources, tokens);
     }
 

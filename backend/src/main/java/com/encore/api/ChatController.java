@@ -55,7 +55,9 @@ public class ChatController {
                 .orElseThrow(() -> new ApiNotFoundException("존재하지 않는 이벤트입니다: " + id));
         validate(request);
         // 비용 가드: IP·이벤트당 분당 제한 — Chat은 캐시 불가능한 유일한 변동 비용원
-        if (!rateLimiter.tryAcquire(clientIp(httpRequest) + ":" + id, System.currentTimeMillis())) {
+        if (!rateLimiter.tryAcquire(
+                com.encore.common.ClientIps.from(httpRequest) + ":" + id,
+                System.currentTimeMillis())) {
             throw new ErrorResponseException(HttpStatus.TOO_MANY_REQUESTS,
                     ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS,
                             "질문이 너무 잦아요. 잠시 후 다시 시도해 주세요."), null);
@@ -63,14 +65,14 @@ public class ChatController {
 
         ChatService.ChatStream stream = chatService.chat(event, request.messages());
         Flux<ServerSentEvent<String>> deltas = stream.tokens()
-                .map(token -> event("delta", objectMapper.writeValueAsString(token)));
+                .map(token -> Sse.event("delta", objectMapper.writeValueAsString(token)));
         // 출처는 도구 실행이 끝나야 확정 — defer로 스트림 완료 후에 평가한다
         Flux<ServerSentEvent<String>> sources = Flux.defer(() -> Flux.just(
-                event("sources", objectMapper.writeValueAsString(stream.sources().get()))));
-        Flux<ServerSentEvent<String>> done = Flux.just(event("done", "{}"));
+                Sse.event("sources", objectMapper.writeValueAsString(stream.sources().get()))));
+        Flux<ServerSentEvent<String>> done = Flux.just(Sse.event("done", "{}"));
 
         return Flux.concat(deltas, sources, done)
-                .onErrorResume(e -> Flux.just(event("error", objectMapper.writeValueAsString(
+                .onErrorResume(e -> Flux.just(Sse.event("error", objectMapper.writeValueAsString(
                         "답변 생성에 실패했어요. 잠시 후 다시 시도해 주세요."))));
     }
 
@@ -99,23 +101,5 @@ public class ChatController {
             throw new IllegalArgumentException(
                     "질문이 너무 깁니다 (최대 " + ChatService.MAX_QUESTION_CHARS + "자)");
         }
-    }
-
-    /**
-     * 레이트리밋 키용 클라이언트 IP. X-Forwarded-For의 **마지막** 항목을 쓴다 —
-     * 첫 항목은 클라이언트가 임의 헤더로 위조해 제한을 우회할 수 있고(append 방식 프록시),
-     * 마지막 항목은 우리 앞의 신뢰 프록시(nginx) 1홉이 직접 본 주소다.
-     */
-    private static String clientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            String[] hops = forwarded.split(",");
-            return hops[hops.length - 1].strip();
-        }
-        return request.getRemoteAddr();
-    }
-
-    private static ServerSentEvent<String> event(String name, String data) {
-        return ServerSentEvent.<String>builder().event(name).data(data).build();
     }
 }

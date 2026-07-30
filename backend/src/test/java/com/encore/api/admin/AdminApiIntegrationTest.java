@@ -286,4 +286,56 @@ class AdminApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.collecting").value(false));
     }
+
+    /** AI 대시보드(E9) — 호출 이력이 없으면 0으로 응답한다(트랜잭션 롤백으로 매 테스트 빈 상태). */
+    @Test
+    void aiDashboardSummarizesToday() throws Exception {
+        mockMvc.perform(get("/api/admin/ai-dashboard").with(httpBasic(USER, PASS)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCalls").value(0))
+                .andExpect(jsonPath("$.estimatedCostUsd").value(0.0))
+                .andExpect(jsonPath("$.byType.length()").value(0));
+    }
+
+    /** RAG 저장소 상태(E10) — 수집 대상 아티스트별 카운트. */
+    @Test
+    void ragStatusListsTargetArtists() throws Exception {
+        artistRepository.saveAndFlush(Artist.builder()
+                .mbid(UUID.randomUUID()).name("Megadeth").target(true).build());
+
+        mockMvc.perform(get("/api/admin/rag/status").with(httpBasic(USER, PASS)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].artistName").value("Megadeth"))
+                .andExpect(jsonPath("$[0].documentCount").value(0))
+                .andExpect(jsonPath("$[0].chunkCount").value(0))
+                .andExpect(jsonPath("$[0].explanationCount").value(0));
+    }
+
+    /**
+     * 로그인 브루트포스 방어(D3) — 실패 10회 후 같은 IP는 429로 차단되고 비밀번호 검증도 안 탄다.
+     * 다른 테스트의 기본 IP(127.0.0.1) 카운터를 오염시키지 않게 전용 XFF를 쓴다.
+     */
+    @Test
+    void bruteForceLoginIsLockedOut() throws Exception {
+        String attackerIp = "10.99.99.99";
+        for (int i = 0; i < 10; i++) {
+            mockMvc.perform(get("/api/admin/logs")
+                            .header("X-Forwarded-For", attackerIp)
+                            .with(httpBasic(USER, "wrong-" + i)))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        mockMvc.perform(get("/api/admin/logs")
+                        .header("X-Forwarded-For", attackerIp)
+                        .with(httpBasic(USER, PASS))) // 올바른 비밀번호여도 차단 중엔 거부
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string("Content-Type",
+                        org.hamcrest.Matchers.containsString("application/problem+json")));
+
+        // 다른 IP는 영향 없다
+        mockMvc.perform(get("/api/admin/logs")
+                        .header("X-Forwarded-For", "10.11.11.11")
+                        .with(httpBasic(USER, PASS)))
+                .andExpect(status().isOk());
+    }
 }

@@ -1,4 +1,7 @@
-package com.encore.prediction;
+package com.encore.trend;
+
+import com.encore.prediction.EvidenceJson;
+import com.encore.prediction.Prediction;
 
 import com.encore.prediction.PredictionCalculator.Evidence;
 import com.encore.prediction.PredictionCalculator.Trend;

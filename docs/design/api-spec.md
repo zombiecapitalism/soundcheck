@@ -331,7 +331,7 @@ POST /api/admin/events
   "venueName": "삼락생태공원", "expectedShowType": "FESTIVAL", "expectedSongCount": 12 }
 ```
 
-| 응답 | **201** `{ "id": 3, "predictionStatus": "SUCCESS" \| "FAILED" }` — 등록 직후 매칭+예측을 동기 실행한 결과 |
+| 응답 | **201** `{ "id": 3, "predictionStatus": "SUCCESS" \| "FAILED" \| "PENDING" }` — 등록 직후 **이 이벤트만** 동기 예측(전체 재계산 아님 — 이벤트 수 × LLM 요약 비용 방지). PENDING = 배치와 겹쳐 건너뜀(진행 중 배치가 마저 계산) |
 | 실패 | 400 과거 날짜 (사후 예측 방지) / 404 아티스트 미등록 / 409 같은 아티스트·날짜 중복 |
 
 ### API-12 수집 배치 트리거
@@ -348,7 +348,7 @@ POST /api/admin/batch/collect
 POST /api/admin/batch/predict
 ```
 
-응답: **200** `LogEntry[]` — **동기 실행** 후 이번 실행의 이벤트별 로그 반환.
+응답: **200** `LogEntry[]` — **동기 실행** 후 이번 실행의 이벤트별 로그 반환. 이미 실행 중이면 **409**(수집 파이프라인 말미의 예측과 락 공유 — 같은 이벤트 DELETE+INSERT 경쟁 방지).
 
 ### API-14 RAG 문서 수집 트리거
 

@@ -15,8 +15,11 @@ export default function EventListPage() {
     return <StatusView kind="error" message={error.message} onRetry={() => refetch()} />
   }
 
-  // 검증된(적중률이 나온) 이벤트는 아래 아카이브 섹션에서 보여준다 — 목록 중복 방지
-  const upcoming = events.filter((event) => !event.verified)
+  // 검증된(적중률이 나온) 이벤트는 아래 아카이브 섹션에서 보여준다 — 목록 중복 방지.
+  // 단, 검증됐는데 예측 스냅샷이 없어 아카이브에서 빠진 이벤트(수동 연결 등 예외 상태)는
+  // 어디에도 안 보이는 유령이 되므로 목록에 남긴다
+  const archivedIds = new Set((archive ?? []).map((summary) => summary.eventId))
+  const upcoming = events.filter((event) => !event.verified || !archivedIds.has(event.id))
 
   return (
     <>

@@ -1,7 +1,6 @@
 package com.encore.rag;
 
 import com.encore.llm.LlmCallRecorder;
-import com.encore.llm.LlmCallType;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingResponse;
 import org.springframework.stereotype.Service;
@@ -51,10 +50,7 @@ public class RagRetriever {
     private float[] embedQuery(String queryText) {
         long start = System.currentTimeMillis();
         EmbeddingResponse response = embeddingModel.embedForResponse(List.of(queryText));
-        llmCallRecorder.recordUsage(LlmCallType.EMBEDDING,
-                response.getMetadata() != null ? response.getMetadata().getModel() : null,
-                response.getMetadata() != null ? response.getMetadata().getUsage() : null,
-                System.currentTimeMillis() - start);
+        llmCallRecorder.recordEmbedding(response, System.currentTimeMillis() - start);
         return response.getResults().getFirst().getOutput();
     }
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { problemMessage } from '../api/client'
 import type { ExplanationSource } from '../api/types'
 
 // RAG Chat(E8) — POST + SSE. EventSource는 POST를 못 쓰므로 fetch 스트림을 직접 파싱한다.
@@ -17,8 +18,10 @@ interface ChatState {
   errorMessage: string | null
 }
 
-/** SSE 본문 파서 — "event: x\ndata: y\n\n" 블록 단위. 청크 경계에 걸친 블록은 버퍼에 남긴다. */
-function parseSseChunk(buffer: string): { events: { event: string; data: string }[]; rest: string } {
+/** SSE 본문 파서 — "event: x\ndata: y\n\n" 블록 단위. 청크 경계에 걸린 블록은 버퍼에 남긴다. */
+export function parseSseChunk(
+  buffer: string,
+): { events: { event: string; data: string }[]; rest: string } {
   const events: { event: string; data: string }[] = []
   const blocks = buffer.split('\n\n')
   const rest = blocks.pop() ?? ''
@@ -81,14 +84,7 @@ export function useChat(eventId: number) {
         signal: controller.signal,
       })
       if (!response.ok || !response.body) {
-        let message = `요청 실패 (${response.status})`
-        try {
-          const problem = (await response.json()) as { detail?: string }
-          message = problem.detail ?? message
-        } catch {
-          /* Problem 형식이 아니면 기본 메시지 */
-        }
-        update('error', message)
+        update('error', await problemMessage(response))
         return
       }
 

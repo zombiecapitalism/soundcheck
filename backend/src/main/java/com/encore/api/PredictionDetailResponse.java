@@ -86,20 +86,32 @@ public record PredictionDetailResponse(
 
         /** show의 곡 목록은 fetch join으로 로드된 상태를 전제한다. */
         static HistoryEntry from(Show show, String songKey, Map<String, Double> weightBySetlistId) {
-            ShowSong song = show.playedSongs().stream()
-                    .filter(s -> s.getSongKey().equals(songKey))
-                    .findFirst()
-                    .orElse(null);
+            // "N곡 중 M번째"의 N·M 모두 실연주(tape·중복 제외) 기준 — positionTotal을 그대로 쓰면
+            // 인트로 테이프만큼 밀려 "18곡 중 19번째" 같은 표기가 가능하다(D10). 예측 집계와 같은 규칙.
+            int playedIndex = 0;
+            Integer position = null;
+            Boolean encore = null;
+            java.util.Set<String> seen = new java.util.HashSet<>();
+            for (ShowSong song : show.playedSongs()) {
+                if (!seen.add(song.getSongKey())) {
+                    continue; // 리프라이즈는 첫 등장만
+                }
+                playedIndex++;
+                if (song.getSongKey().equals(songKey)) {
+                    position = playedIndex;
+                    encore = song.isEncore();
+                }
+            }
             return new HistoryEntry(
                     show.getSetlistId(),
                     show.getEventDate(),
                     show.getVenueName(),
                     show.getCityName(),
                     show.getShowType(),
-                    show.playedSongs().size(),
-                    song != null,
-                    song != null ? (int) song.getPositionTotal() : null,
-                    song != null ? song.isEncore() : null,
+                    seen.size(),
+                    position != null,
+                    position,
+                    encore,
                     weightBySetlistId.get(show.getSetlistId()));
         }
     }

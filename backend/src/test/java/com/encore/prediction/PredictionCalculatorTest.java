@@ -122,14 +122,30 @@ class PredictionCalculatorTest {
 
     @Test
     void computesAveragePositionAndEncoreRatio() {
+        // s1에서 2번째, s2에서 5번째(앙코르) → 평균 3.5
         List<SongScore> scores = PredictionCalculator.calculate(List.of(
-                show("s1", LocalDate.of(2026, 7, 1), ShowType.UNKNOWN, song("Closer", "closer", 2)),
-                show("s2", LocalDate.of(2026, 7, 2), ShowType.UNKNOWN, song("Closer", "closer", 5, true, false))
+                show("s1", LocalDate.of(2026, 7, 1), ShowType.UNKNOWN,
+                        song("A", "a", 1), song("Closer", "closer", 2)),
+                show("s2", LocalDate.of(2026, 7, 2), ShowType.UNKNOWN,
+                        song("A", "a", 1), song("B", "b", 2), song("C", "c", 3), song("D", "d", 4),
+                        song("Closer", "closer", 5, true, false))
         ), ShowType.FESTIVAL, NO_WEIGHTING);
 
         SongScore closer = find(scores, "closer");
         assertThat(closer.avgPosition()).isEqualByComparingTo("3.5");
         assertThat(closer.encoreRatio()).isEqualByComparingTo("0.5000");
+    }
+
+    /** 평균 위치는 실연주 순번 기준 — 인트로 테이프가 있어도 "보통 1번째 곡"이어야 한다(D10). */
+    @Test
+    void avgPositionIgnoresTapeOffset() {
+        List<SongScore> scores = PredictionCalculator.calculate(List.of(
+                show("s1", LocalDate.of(2026, 7, 1), ShowType.UNKNOWN,
+                        song("Intro Tape", "intro tape", 1, false, true),
+                        song("Opener", "opener", 2))
+        ), ShowType.FESTIVAL, NO_WEIGHTING);
+
+        assertThat(find(scores, "opener").avgPosition()).isEqualByComparingTo("1.0");
     }
 
     /** 항상 연주된 곡은 정확히 1.0000 — prediction 테이블 CHECK(≤1)의 경계값. */

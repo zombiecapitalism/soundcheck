@@ -38,4 +38,7 @@ public interface LlmCallLogRepository extends JpaRepository<LlmCallLog, Long> {
             order by 2 desc
             """, nativeQuery = true)
     List<TypeStats> statsSince(@Param("since") Instant since);
+
+    /** retention(LogRetention) — 90일 지난 이력 정리. */
+    long deleteByCreatedAtBefore(Instant cutoff);
 }

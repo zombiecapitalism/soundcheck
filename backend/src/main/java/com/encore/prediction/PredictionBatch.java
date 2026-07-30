@@ -52,7 +52,8 @@ public class PredictionBatch {
         return results;
     }
 
-    private CollectionLog predictOne(TargetEvent event) {
+    /** 단건 예측(이벤트 등록 직후 등) — 전체 순회와 같은 로그·실패 격리 규약을 쓴다. */
+    public CollectionLog predictOne(TargetEvent event) {
         Instant startedAt = Instant.now();
         try {
             PredictionGenerator.Summary summary = generator.predict(event.getId());

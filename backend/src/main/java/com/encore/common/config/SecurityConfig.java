@@ -13,6 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 
 import java.nio.charset.StandardCharsets;
 
@@ -24,7 +25,8 @@ import java.nio.charset.StandardCharsets;
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, AdminLoginGuardFilter loginGuardFilter)
+            throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session ->
@@ -32,6 +34,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/admin/**").authenticated()
                         .anyRequest().permitAll())
+                // 브루트포스 가드 — 차단 중에는 비밀번호 검증 자체가 실행되지 않게 인증 필터 앞에
+                .addFilterBefore(loginGuardFilter, BasicAuthenticationFilter.class)
                 .httpBasic(basic -> basic.authenticationEntryPoint(problemEntryPoint()))
                 .build();
     }

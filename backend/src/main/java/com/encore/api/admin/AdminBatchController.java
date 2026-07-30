@@ -45,10 +45,18 @@ public class AdminBatchController {
         return ResponseEntity.accepted().body(new CollectStarted(true));
     }
 
-    /** 적중률 매칭 + 예측 재계산(동기) — 다가오는 이벤트 전체. */
+    /** 적중률 매칭 + 예측 재계산(동기) — 다가오는 이벤트 전체. 이미 실행 중이면 409. */
     @PostMapping("/batch/predict")
-    public List<LogEntry> predict() {
-        return pipeline.matchAndPredict().stream().map(LogEntry::from).toList();
+    public ResponseEntity<Object> predict() {
+        return pipeline.tryMatchAndPredict()
+                .<ResponseEntity<Object>>map(logs -> ResponseEntity.ok(
+                        logs.stream().map(LogEntry::from).toList()))
+                .orElseGet(() -> {
+                    ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
+                            "예측 재계산이 이미 실행 중입니다. 완료 후 다시 시도하세요.");
+                    problem.setTitle("이미 실행 중");
+                    return ResponseEntity.of(problem).build();
+                });
     }
 
     /** RAG 문서 수집 시작(비동기) — 대상 아티스트 전체. 이력은 EMBED 타입으로 남는다. */

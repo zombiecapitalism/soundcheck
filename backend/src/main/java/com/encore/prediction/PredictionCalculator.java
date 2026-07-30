@@ -129,10 +129,13 @@ public final class PredictionCalculator {
                 }
             }
             int mainCount = mainIndexByKey.size();
+            int playedIndex = 0;
             for (ShowSong song : firstOccurrence.values()) {
+                playedIndex++;
                 byKey.computeIfAbsent(song.getSongKey(), key -> new Accumulator(song.getSongName()))
-                        .add(show, song, weight, decayWeight, i, halfBoundary,
-                                mainIndexByKey.getOrDefault(song.getSongKey(), 0), mainCount);
+                        .add(song, new SongContext(show, weight, decayWeight, i, halfBoundary,
+                                playedIndex,
+                                mainIndexByKey.getOrDefault(song.getSongKey(), 0), mainCount));
             }
         }
 
@@ -185,6 +188,15 @@ public final class PredictionCalculator {
         return BigDecimal.valueOf(value).setScale(scale, RoundingMode.HALF_UP);
     }
 
+    /**
+     * 공연 1회분의 곡 집계 컨텍스트. playedIndex는 실연주(tape·중복 제외) 기준 1-base 순번 —
+     * positionTotal은 인트로 테이프만큼 밀려 "보통 N번째 곡" 표기가 어긋난다.
+     * mainIndex는 본편(앙코르 제외) 내 순번, 앙코르 곡이면 0.
+     */
+    private record SongContext(Show show, double weight, double decayWeight, int showIndex,
+                               int halfBoundary, int playedIndex, int mainIndex, int mainCount) {
+    }
+
     private static final class Accumulator {
         /** 최근 공연부터 순회하므로 처음 만난 표기가 가장 최신 원본 곡명이다. */
         private final String songName;
@@ -208,39 +220,39 @@ public final class PredictionCalculator {
             this.songName = songName;
         }
 
-        /** mainIndex는 본편(앙코르 제외) 내 1-base 순번, 앙코르 곡이면 0. */
-        private void add(Show show, ShowSong song, double weight, double decayWeight,
-                         int showIndex, int halfBoundary, int mainIndex, int mainCount) {
-            weightedScore += weight;
-            unboostedScore += decayWeight;
+        private void add(ShowSong song, SongContext ctx) {
+            weightedScore += ctx.weight();
+            unboostedScore += ctx.decayWeight();
             playedCount++;
-            positionSum += song.getPositionTotal();
+            // avgPosition의 원천 — positionTotal이 아니라 실연주 순번(D10: 인트로 테이프 오프셋 보정)
+            positionSum += ctx.playedIndex();
             if (song.isEncore()) {
                 encoreCount++;
-            } else if (mainIndex == 1) {
+            } else if (ctx.mainIndex() == 1) {
                 openerCount++;
-            } else if (mainIndex <= Math.ceilDiv(mainCount, 3)) {
+            } else if (ctx.mainIndex() <= Math.ceilDiv(ctx.mainCount(), 3)) {
                 earlyCount++;
-            } else if (mainIndex <= Math.ceilDiv(2 * mainCount, 3)) {
+            } else if (ctx.mainIndex() <= Math.ceilDiv(2 * ctx.mainCount(), 3)) {
                 midCount++;
             } else {
                 lateCount++;
             }
-            if (showIndex < 5) {
+            if (ctx.showIndex() < 5) {
                 recentCount5++;
             }
-            if (showIndex < halfBoundary) {
+            if (ctx.showIndex() < ctx.halfBoundary()) {
                 recentHalfCount++;
             } else {
                 olderHalfCount++;
             }
-            if (show.getShowType() == ShowType.FESTIVAL) {
+            if (ctx.show().getShowType() == ShowType.FESTIVAL) {
                 festivalPlayed++;
-            } else if (show.getShowType() == ShowType.SOLO) {
+            } else if (ctx.show().getShowType() == ShowType.SOLO) {
                 soloPlayed++;
             }
-            appearances.add(new Appearance(show.getSetlistId(), show.getEventDate().toString(),
-                    weight, song.getPositionTotal(), song.isEncore()));
+            appearances.add(new Appearance(ctx.show().getSetlistId(),
+                    ctx.show().getEventDate().toString(),
+                    ctx.weight(), song.getPositionTotal(), song.isEncore()));
         }
     }
 }

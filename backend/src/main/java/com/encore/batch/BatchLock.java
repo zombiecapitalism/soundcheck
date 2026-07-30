@@ -28,6 +28,20 @@ public class BatchLock {
         return collecting.get();
     }
 
+    private final AtomicBoolean predicting = new AtomicBoolean(false);
+
+    /**
+     * 예측 재계산 락 — 수집 파이프라인 말미의 예측과 관리자 수동 재계산이 겹치면
+     * 같은 이벤트의 DELETE+INSERT가 경쟁해 유니크 위반(가짜 FAILED 로그)이 난다.
+     */
+    public boolean tryAcquirePredict() {
+        return predicting.compareAndSet(false, true);
+    }
+
+    public void releasePredict() {
+        predicting.set(false);
+    }
+
     /** RAG 문서 수집(임베딩) — 수집 락과 독립이다. 외부 API·비용 소모가 커서 중복 실행만 막는다. */
     public boolean tryAcquireRagIngest() {
         return ragIngesting.compareAndSet(false, true);

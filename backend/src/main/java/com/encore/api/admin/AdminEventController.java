@@ -64,13 +64,15 @@ public class AdminEventController {
                 .expectedSongCount(request.expectedSongCount())
                 .build());
 
-        // 예측은 조회·계산뿐이라 등록 직후 동기로 돌려도 부담이 없다.
+        // 이 이벤트만 예측한다 — 전체 재계산은 이벤트 수 × LLM 변화 요약 비용이 등록마다 든다.
         // 아직 수집 전이면 FAILED("집계할 공연이 없습니다")로 남는다 — 수집 후 재실행하면 된다.
-        pipeline.matchAndPredict();
+        // 배치와 겹치면 건너뛴다 — 진행 중인 배치가 이 이벤트도 계산한다.
+        boolean predicted = pipeline.tryPredictSingle(event);
         // 로그에서 "방금 실행분"을 추측하는 대신 이 이벤트의 예측 존재 여부로 판정한다 —
         // 같은 아티스트의 이벤트가 여럿이어도 정확하다.
-        String predictionStatus = predictionRepository.existsByTargetEvent_Id(event.getId())
-                ? "SUCCESS" : "FAILED";
+        String predictionStatus = !predicted
+                ? "PENDING"
+                : predictionRepository.existsByTargetEvent_Id(event.getId()) ? "SUCCESS" : "FAILED";
         return new CreatedEvent(event.getId(), predictionStatus);
     }
 

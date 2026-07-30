@@ -11,7 +11,10 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.stereotype.Component;
 
+import com.encore.prediction.TargetEvent;
+
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 일일 배치 파이프라인: 수집 → 적중률 매칭 → 예측 재계산.
@@ -62,19 +65,49 @@ public class CollectionPipeline {
         return batchLock.isCollecting();
     }
 
-    /** 지난 이벤트의 실제 셋리스트 매칭(적중률 정답 채우기) 후 다가오는 이벤트를 재계산한다. */
-    public List<CollectionLog> matchAndPredict() {
-        int matched = accuracyService.matchPastEvents();
-        if (matched > 0) {
-            log.info("적중률 검증용 실제 셋리스트 {}건 연결", matched);
+    /**
+     * 지난 이벤트의 실제 셋리스트 매칭(적중률 정답 채우기) 후 다가오는 이벤트를 재계산한다.
+     * 예측 락으로 보호 — 수집 파이프라인 말미와 관리자 수동 재계산이 겹치면 같은 이벤트의
+     * DELETE+INSERT가 경쟁해 유니크 위반(가짜 FAILED 로그)이 난다. 실행 중이면 empty.
+     */
+    public Optional<List<CollectionLog>> tryMatchAndPredict() {
+        if (!batchLock.tryAcquirePredict()) {
+            return Optional.empty();
         }
-        return predictionBatch.predictUpcoming();
+        try {
+            int matched = accuracyService.matchPastEvents();
+            if (matched > 0) {
+                log.info("적중률 검증용 실제 셋리스트 {}건 연결", matched);
+            }
+            return Optional.of(predictionBatch.predictUpcoming());
+        } finally {
+            batchLock.releasePredict();
+        }
+    }
+
+    /**
+     * 이벤트 등록 직후의 단건 예측 — 전체 재계산(이벤트 수 × LLM 요약 비용)을 피한다.
+     * 배치와 겹치면 건너뛴다(false) — 어차피 진행 중인 배치가 이 이벤트도 계산한다.
+     */
+    public boolean tryPredictSingle(TargetEvent event) {
+        if (!batchLock.tryAcquirePredict()) {
+            return false;
+        }
+        try {
+            predictionBatch.predictOne(event);
+            return true;
+        } finally {
+            batchLock.releasePredict();
+        }
     }
 
     private void runCollectionThenPredict() {
         try {
             collector.collectAll();
-            matchAndPredict();
+            if (tryMatchAndPredict().isEmpty()) {
+                // 관리자 수동 재계산과 겹친 극단 케이스 — 다음 일일 배치가 따라잡는다
+                log.warn("예측이 이미 실행 중이라 수집 후 재계산을 건너뜀");
+            }
         } catch (RuntimeException e) {
             log.error("수집 파이프라인 실패", e);
         } finally {

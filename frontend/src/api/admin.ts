@@ -1,4 +1,4 @@
-import { ApiError } from './client'
+import { ApiError, problemMessage } from './client'
 import type { ShowType } from './types'
 
 // 관리자 API — Basic 인증. 자격증명은 세션 동안만 브라우저에 둔다(sessionStorage).
@@ -6,7 +6,9 @@ import type { ShowType } from './types'
 const AUTH_KEY = 'encore-admin-auth'
 
 export function saveAdminAuth(username: string, password: string) {
-  sessionStorage.setItem(AUTH_KEY, btoa(`${username}:${password}`))
+  // btoa는 Latin-1 전용 — 한글 등 비Latin-1 비밀번호에서 예외가 난다. UTF-8 바이트로 우회
+  const utf8 = new TextEncoder().encode(`${username}:${password}`)
+  sessionStorage.setItem(AUTH_KEY, btoa(String.fromCharCode(...utf8)))
 }
 
 export function clearAdminAuth() {
@@ -29,14 +31,9 @@ async function adminRequest<T>(path: string, init?: RequestInit): Promise<T> {
     },
   })
   if (!response.ok) {
-    let message = `요청 실패 (${response.status})`
-    try {
-      const problem = (await response.json()) as { detail?: string; title?: string }
-      message = problem.detail ?? problem.title ?? message
-    } catch {
-      if (response.status === 401) {
-        message = '인증에 실패했어요. 비밀번호를 확인해 주세요.'
-      }
+    let message = await problemMessage(response)
+    if (response.status === 401 && message.startsWith('요청 실패')) {
+      message = '인증에 실패했어요. 비밀번호를 확인해 주세요.'
     }
     throw new ApiError(response.status, message)
   }
@@ -54,14 +51,7 @@ async function adminRequestVoid(path: string, init?: RequestInit): Promise<void>
     },
   })
   if (!response.ok) {
-    let message = `요청 실패 (${response.status})`
-    try {
-      const problem = (await response.json()) as { detail?: string; title?: string }
-      message = problem.detail ?? problem.title ?? message
-    } catch {
-      /* Problem 형식이 아니면 기본 메시지 */
-    }
-    throw new ApiError(response.status, message)
+    throw new ApiError(response.status, await problemMessage(response))
   }
 }
 

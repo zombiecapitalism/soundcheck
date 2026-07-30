@@ -1,7 +1,7 @@
-package com.encore.prediction;
+package com.encore.trend;
 
-import com.encore.prediction.TrendChanges.Changes;
-import com.encore.prediction.TrendChanges.SongChange;
+import com.encore.trend.TrendChanges.Changes;
+import com.encore.trend.TrendChanges.SongChange;
 
 import java.util.List;
 

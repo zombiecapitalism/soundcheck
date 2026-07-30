@@ -10,6 +10,18 @@ export class ApiError extends Error {
   }
 }
 
+/** RFC 7807 응답 → 사용자 메시지. 모든 fetch 래퍼(공개·관리자·Chat)가 공유한다. */
+export async function problemMessage(response: Response): Promise<string> {
+  let message = `요청 실패 (${response.status})`
+  try {
+    const problem = (await response.json()) as ProblemDetail
+    message = problem.detail ?? problem.title ?? message
+  } catch {
+    // Problem 형식이 아니면 상태 코드 메시지 유지
+  }
+  return message
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...init,
@@ -20,14 +32,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     },
   })
   if (!response.ok) {
-    let message = `요청 실패 (${response.status})`
-    try {
-      const problem = (await response.json()) as ProblemDetail
-      message = problem.detail ?? problem.title ?? message
-    } catch {
-      // Problem 형식이 아니면 상태 코드 메시지 유지
-    }
-    throw new ApiError(response.status, message)
+    throw new ApiError(response.status, await problemMessage(response))
   }
   return response.json() as Promise<T>
 }

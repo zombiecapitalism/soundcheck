@@ -63,19 +63,15 @@ public class SongExplanationController {
         SongExplanationService.Explanation explanation = explanationService.explain(
                 artistMbid, songKey, prediction.getSongName(), artist.getName());
 
-        Flux<ServerSentEvent<String>> sources = Flux.just(event("sources",
+        Flux<ServerSentEvent<String>> sources = Flux.just(Sse.event("sources",
                 objectMapper.writeValueAsString(explanation.sources())));
         Flux<ServerSentEvent<String>> deltas = explanation.tokens()
-                .map(token -> event("delta", objectMapper.writeValueAsString(token)));
-        Flux<ServerSentEvent<String>> done = Flux.just(event("done", "{}"));
+                .map(token -> Sse.event("delta", objectMapper.writeValueAsString(token)));
+        Flux<ServerSentEvent<String>> done = Flux.just(Sse.event("done", "{}"));
 
         return Flux.concat(sources, deltas, done)
                 .onErrorResume(e -> Flux.just(
-                        event("error", objectMapper.writeValueAsString(
+                        Sse.event("error", objectMapper.writeValueAsString(
                                 "설명 생성에 실패했어요. 잠시 후 다시 시도해 주세요."))));
-    }
-
-    private static ServerSentEvent<String> event(String name, String data) {
-        return ServerSentEvent.<String>builder().event(name).data(data).build();
     }
 }
