@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router'
-import { useArtist, useEvent, usePredictions } from '../api/queries'
+import { useAccuracy, useArtist, useEvent, usePredictions } from '../api/queries'
 import ProbabilityBar from '../components/ProbabilityBar'
 import StatusView from '../components/StatusView'
 import {
@@ -17,6 +17,8 @@ export default function PredictionsPage() {
   const { data: event } = useEvent(eventId)
   const { data: artist } = useArtist(event?.artist.mbid)
   const { data: predictions, isPending, isError, error, refetch } = usePredictions(eventId)
+  const { data: accuracy } = useAccuracy(eventId, event?.verified ?? false)
+  const playedByKey = new Map(accuracy?.results.map((r) => [r.songKey, r.played]) ?? [])
 
   // id가 숫자가 아니면 쿼리가 시작되지 않아 isPending이 영원히 true다 — 로딩으로 위장되면 안 된다
   if (!Number.isFinite(eventId)) {
@@ -55,6 +57,25 @@ export default function PredictionsPage() {
         </header>
       )}
 
+      {accuracy && (
+        <section className="accuracy-card">
+          <div className="accuracy-headline">
+            <span className="accuracy-percent">{formatPercent(accuracy.precisionAtK)}</span>
+            <span className="accuracy-label">예측 적중률</span>
+          </div>
+          <p className="accuracy-detail">
+            실제 {accuracy.actualSongCount}곡 공연 — 예측 상위 {accuracy.topK}곡 중{' '}
+            {accuracy.topKHits}곡 적중
+            {accuracy.surprises.length > 0 && <> · 예측 밖 {accuracy.surprises.length}곡</>}
+          </p>
+          {accuracy.surprises.length > 0 && (
+            <p className="accuracy-surprises">
+              놓친 곡: {accuracy.surprises.map((s) => s.songName).join(', ')}
+            </p>
+          )}
+        </section>
+      )}
+
       {isPending && <StatusView kind="loading" message="예측을 불러오는 중…" />}
       {isError && <StatusView kind="error" message={error.message} onRetry={() => refetch()} />}
       {predictions && predictions.length === 0 && (
@@ -65,6 +86,7 @@ export default function PredictionsPage() {
         <ol className="prediction-list">
           {predictions.map((prediction) => {
             const position = positionText(prediction.avgPosition)
+            const played = playedByKey.get(prediction.songKey)
             return (
               <li key={prediction.songKey}>
                 <Link
@@ -73,7 +95,11 @@ export default function PredictionsPage() {
                 >
                   <div className="prediction-row">
                     <span className="prediction-rank">{prediction.rank}</span>
-                    <span className="prediction-song">{prediction.songName}</span>
+                    <span className="prediction-song">
+                      {prediction.songName}
+                      {played === true && <span className="hit-badge">적중</span>}
+                      {played === false && <span className="miss-badge">미연주</span>}
+                    </span>
                     <span className="prediction-percent">
                       {formatPercent(prediction.probability)}
                     </span>

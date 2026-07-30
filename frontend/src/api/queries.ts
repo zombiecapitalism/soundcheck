@@ -31,3 +31,12 @@ export function useArtist(mbid: string | undefined) {
     enabled: !!mbid,
   })
 }
+
+/** 적중률 — 실제 셋리스트가 연결된(verified) 이벤트에서만 호출한다. */
+export function useAccuracy(eventId: number, verified: boolean) {
+  return useQuery({
+    queryKey: ['events', eventId, 'accuracy'],
+    queryFn: () => api.accuracy(eventId),
+    enabled: Number.isFinite(eventId) && verified,
+  })
+}

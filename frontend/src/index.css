@@ -536,3 +536,62 @@ select:focus {
 .log-failed {
   color: #f28b82;
 }
+
+/* 적중률 카드 (공연 후) */
+.accuracy-card {
+  margin-top: 12px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+.accuracy-headline {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.accuracy-percent {
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.accuracy-label {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.accuracy-detail {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.accuracy-surprises {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.hit-badge,
+.miss-badge {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 8px;
+  vertical-align: 2px;
+}
+
+.hit-badge {
+  color: #81c995;
+  background: rgba(129, 201, 149, 0.14);
+}
+
+.miss-badge {
+  color: var(--text-muted);
+  background: var(--track);
+}
