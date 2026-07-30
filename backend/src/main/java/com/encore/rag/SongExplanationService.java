@@ -69,6 +69,11 @@ public class SongExplanationService {
 
     /** 캐시 저장 실패가 이미 전송된 스트림을 error로 바꾸면 안 된다 — 기록만 남긴다. */
     private void saveQuietly(UUID artistMbid, String songKey, List<Source> sources, String content) {
+        // 빈 본문이 캐시되면 무효화 전까지 그 곡은 영원히 빈 화면이다 — 저장하지 않는다
+        if (content.isBlank()) {
+            log.warn("빈 생성 본문은 캐시하지 않음: {} / {}", artistMbid, songKey);
+            return;
+        }
         try {
             cache.save(artistMbid, songKey, sources, content);
         } catch (RuntimeException e) {

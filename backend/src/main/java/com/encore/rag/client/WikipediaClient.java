@@ -1,5 +1,6 @@
 package com.encore.rag.client;
 
+import com.encore.rag.RagProperties;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -34,11 +35,18 @@ public class WikipediaClient {
 
     private Long lastRequestAtNanos;
 
-    public WikipediaClient(RestClient.Builder restClientBuilder, ObjectMapper objectMapper) {
+    public WikipediaClient(RestClient.Builder restClientBuilder, RagProperties properties,
+                           ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
         this.restClient = restClientBuilder
-                .defaultHeader(HttpHeaders.USER_AGENT, "EncoreSetlistStudy/0.1 (portfolio project)")
+                .defaultHeader(HttpHeaders.USER_AGENT, userAgent(properties.userAgentContact()))
                 .build();
+    }
+
+    /** Wikimedia 정책: 식별 가능한 UA + 연락 수단 권고. 연락처는 환경변수로만 주입된다. */
+    private static String userAgent(String contact) {
+        return "EncoreSetlistStudy/0.1 (portfolio project"
+                + (contact == null || contact.isBlank() ? "" : "; " + contact.trim()) + ")";
     }
 
     /** 문서 제목 검색 — 결과 제목 목록(관련도순). 없으면 빈 목록. */

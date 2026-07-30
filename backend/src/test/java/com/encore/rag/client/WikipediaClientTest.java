@@ -33,11 +33,19 @@ class WikipediaClientTest {
     private MockRestServiceServer server;
     private WikipediaClient client;
 
-    @BeforeEach
-    void setUp() {
+    private static com.encore.rag.RagProperties properties(String contact) {
+        return new com.encore.rag.RagProperties(5, 0.35, 650, 40_000, 30, contact);
+    }
+
+    private WikipediaClient newClient(String contact) {
         RestClient.Builder builder = RestClient.builder();
         this.server = MockRestServiceServer.bindTo(builder).build();
-        this.client = new WikipediaClient(builder, JsonMapper.builder().build());
+        return new WikipediaClient(builder, properties(contact), JsonMapper.builder().build());
+    }
+
+    @BeforeEach
+    void setUp() {
+        this.client = newClient("");
     }
 
     private static String fixture(String name) {
@@ -90,6 +98,19 @@ class WikipediaClientTest {
                 .andRespond(withSuccess(fixture("page-missing.json"), MediaType.APPLICATION_JSON));
 
         assertThat(client.fetchPage("en", "No Such Page Xyz")).isEmpty();
+    }
+
+    /** Wikimedia 정책 권고: UA에 연락 수단. 환경변수로 주입될 때만 붙는다. */
+    @Test
+    void appendsContactToUserAgentWhenConfigured() {
+        WikipediaClient withContact = newClient("mailto:ops@example.com");
+        server.expect(requestTo(containsString("srsearch=Pixies")))
+                .andExpect(header("User-Agent",
+                        containsString("EncoreSetlistStudy/0.1 (portfolio project; mailto:ops@example.com)")))
+                .andRespond(withSuccess(fixture("search.json"), MediaType.APPLICATION_JSON));
+
+        withContact.search("en", "Pixies", 1);
+        server.verify();
     }
 
     @Test

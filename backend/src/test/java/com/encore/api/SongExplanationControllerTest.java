@@ -3,7 +3,12 @@ package com.encore.api;
 import com.encore.TestcontainersConfiguration;
 import com.encore.artist.Artist;
 import com.encore.artist.ArtistRepository;
+import com.encore.prediction.Prediction;
+import com.encore.prediction.PredictionRepository;
+import com.encore.prediction.TargetEvent;
+import com.encore.prediction.TargetEventRepository;
 import com.encore.rag.SongExplanationService;
+import com.encore.setlist.ShowType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -15,7 +20,9 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -38,14 +45,31 @@ class SongExplanationControllerTest {
     private MockMvc mockMvc;
     @Autowired
     private ArtistRepository artistRepository;
+    @Autowired
+    private TargetEventRepository targetEventRepository;
+    @Autowired
+    private PredictionRepository predictionRepository;
 
     @MockitoBean
     private SongExplanationService explanationService;
+
+    /** 곡 설명은 예측에 등장한 곡만 허용된다 — 테스트마다 예측을 깔아준다. */
+    private void persistPrediction(Artist artist, String songKey, String songName) {
+        TargetEvent event = targetEventRepository.saveAndFlush(TargetEvent.builder()
+                .artist(artist).eventName("검증용 공연").eventDate(LocalDate.of(2099, 10, 2))
+                .expectedShowType(ShowType.FESTIVAL).build());
+        predictionRepository.saveAndFlush(Prediction.builder()
+                .targetEvent(event).songKey(songKey).songName(songName)
+                .probability(new BigDecimal("0.9000")).rank((short) 1)
+                .playedCount((short) 18).sampleSize((short) 20)
+                .build());
+    }
 
     @Test
     void streamsSourcesThenDeltasThenDone() throws Exception {
         Artist artist = artistRepository.saveAndFlush(Artist.builder()
                 .mbid(UUID.randomUUID()).name("Avenged Sevenfold").target(true).build());
+        persistPrediction(artist, "afterlife", "Afterlife");
         when(explanationService.explain(eq(artist.getMbid()), eq("afterlife"), eq("Afterlife"),
                 eq("Avenged Sevenfold")))
                 .thenReturn(new SongExplanationService.Explanation(
@@ -80,10 +104,24 @@ class SongExplanationControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    /** 임의 songKey로 임베딩·LLM 비용이 새면 안 된다 — 예측에 없는 곡은 404다. */
+    @Test
+    void songNotInPredictionsIsNotFound() throws Exception {
+        Artist artist = artistRepository.saveAndFlush(Artist.builder()
+                .mbid(UUID.randomUUID()).name("Megadeth").target(true).build());
+        persistPrediction(artist, "holy wars", "Holy Wars");
+
+        mockMvc.perform(get("/api/songs/{songKey}/explanation", "made up song")
+                        .param("artistMbid", artist.getMbid().toString())
+                        .param("songName", "Made Up Song"))
+                .andExpect(status().isNotFound());
+    }
+
     @Test
     void generationFailureBecomesErrorEventNotBrokenStream() throws Exception {
         Artist artist = artistRepository.saveAndFlush(Artist.builder()
                 .mbid(UUID.randomUUID()).name("Megadeth").target(true).build());
+        persistPrediction(artist, "holy wars", "Holy Wars");
         when(explanationService.explain(any(), any(), any(), any()))
                 .thenReturn(new SongExplanationService.Explanation(
                         List.of(),

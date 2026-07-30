@@ -28,6 +28,12 @@ public record RagProperties(
         @DefaultValue("40000") @Positive int maxContentChars,
 
         /** 수집 배치에서 아티스트당 곡 문서 상한. */
-        @DefaultValue("30") @Positive int maxSongsPerArtist
+        @DefaultValue("30") @Positive int maxSongsPerArtist,
+
+        /**
+         * Wikipedia User-Agent에 붙일 연락처(이메일/URL) — Wikimedia 정책 권고 사항.
+         * 개인 연락처를 코드에 커밋하지 않도록 환경변수(RAG_CONTACT)로만 주입한다. 비우면 생략.
+         */
+        @DefaultValue("") String userAgentContact
 ) {
 }

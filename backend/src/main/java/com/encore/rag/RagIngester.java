@@ -86,10 +86,6 @@ public class RagIngester {
                     case SKIPPED -> skipped++;
                 }
             }
-            // 새 문서가 들어왔으면 이 아티스트의 캐시된 설명은 낡았다 — 지워서 재생성되게 한다
-            if (fetched > 0) {
-                explanationCache.evictArtist(artist.getMbid());
-            }
             // counts 의미: fetched=저장된 문서 수, updated=저장된 청크 수, skipped=중복·검색 실패
             CollectionLog result = CollectionLog.success(JobType.EMBED, artist.getMbid(),
                     CollectionCounts.builder()
@@ -103,6 +99,20 @@ public class RagIngester {
             log.warn("RAG 수집 실패: {}", artist.getName(), e);
             return collectionLogRepository.save(
                     CollectionLog.failed(JobType.EMBED, artist.getMbid(), e.getMessage(), startedAt));
+        } finally {
+            // 문서가 1건이라도 새로 저장됐으면 캐시된 설명은 낡았다 — 부분 실패로 끝나도 지운다
+            if (fetched > 0) {
+                evictExplanationsQuietly(artist);
+            }
+        }
+    }
+
+    /** finally에서 불린다 — 여기서 던지면 원래 결과(성공/실패 로그)를 삼키므로 기록만 남긴다. */
+    private void evictExplanationsQuietly(Artist artist) {
+        try {
+            explanationCache.evictArtist(artist.getMbid());
+        } catch (RuntimeException e) {
+            log.warn("곡 설명 캐시 무효화 실패: {}", artist.getName(), e);
         }
     }
 

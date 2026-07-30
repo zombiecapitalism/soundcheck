@@ -43,3 +43,4 @@ encore:
     chunk-target-tokens: 650      # 청크 목표 크기 (PRD: 500~800 토큰)
     max-content-chars: 40000      # 문서당 임베딩할 본문 상한 (비용/노이즈 제어)
     max-songs-per-artist: 30      # 수집 배치에서 아티스트당 곡 문서 상한
+    user-agent-contact: ${RAG_CONTACT:} # Wikipedia UA 연락처(선택) — 코드에 커밋하지 않는다

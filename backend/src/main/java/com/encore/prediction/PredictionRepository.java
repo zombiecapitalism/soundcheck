@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface PredictionRepository extends JpaRepository<Prediction, Long> {
 
@@ -15,6 +16,9 @@ public interface PredictionRepository extends JpaRepository<Prediction, Long> {
     boolean existsByTargetEvent_Id(Long targetEventId);
 
     Optional<Prediction> findByTargetEvent_IdAndSongKey(Long targetEventId, String songKey);
+
+    /** 곡 설명 요청 검증용 — 예측에 등장한 곡인지. 임의 songKey로 임베딩·LLM 비용이 새는 것을 막는다. */
+    boolean existsByTargetEvent_Artist_MbidAndSongKey(UUID artistMbid, String songKey);
 
     /**
      * 재계산은 전체 교체다. 파생 deleteBy는 엔티티를 로드해 flush 시점에 지우는데,

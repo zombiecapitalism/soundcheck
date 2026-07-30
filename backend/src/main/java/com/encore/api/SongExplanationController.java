@@ -2,6 +2,7 @@ package com.encore.api;
 
 import com.encore.artist.Artist;
 import com.encore.artist.ArtistRepository;
+import com.encore.prediction.PredictionRepository;
 import com.encore.rag.SongExplanationService;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
@@ -33,12 +34,16 @@ public class SongExplanationController {
 
     private final SongExplanationService explanationService;
     private final ArtistRepository artistRepository;
+    private final PredictionRepository predictionRepository;
     private final ObjectMapper objectMapper;
 
     public SongExplanationController(SongExplanationService explanationService,
-                                    ArtistRepository artistRepository, ObjectMapper objectMapper) {
+                                    ArtistRepository artistRepository,
+                                    PredictionRepository predictionRepository,
+                                    ObjectMapper objectMapper) {
         this.explanationService = explanationService;
         this.artistRepository = artistRepository;
+        this.predictionRepository = predictionRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -48,6 +53,10 @@ public class SongExplanationController {
                                                      @RequestParam String songName) {
         Artist artist = artistRepository.findById(artistMbid)
                 .orElseThrow(() -> new ApiNotFoundException("등록되지 않은 아티스트입니다: " + artistMbid));
+        // 예측에 있는 곡만 — 공개 엔드포인트라 임의 songKey로 임베딩·LLM 비용이 새면 안 된다
+        if (!predictionRepository.existsByTargetEvent_Artist_MbidAndSongKey(artistMbid, songKey)) {
+            throw new ApiNotFoundException("예측에 없는 곡입니다: " + songKey);
+        }
 
         SongExplanationService.Explanation explanation =
                 explanationService.explain(artistMbid, songKey, songName, artist.getName());
