@@ -65,6 +65,32 @@ public class RagChunkRepository {
                 .list();
     }
 
+    /** Chat(E8)용 아티스트 전체 검색 — 곡 필터 없이 SONG 문서까지 전부 후보다. */
+    public List<RetrievedChunk> searchAll(UUID artistMbid, float[] queryEmbedding,
+                                          int topK, double minScore) {
+        return jdbcClient.sql("""
+                        SELECT c.content, d.title, d.source_name, d.source_url,
+                               1 - (c.embedding <=> CAST(:query AS vector)) AS score
+                        FROM rag_chunk c
+                        JOIN rag_document d ON d.id = c.document_id
+                        WHERE d.artist_mbid = :artistMbid
+                          AND 1 - (c.embedding <=> CAST(:query AS vector)) >= :minScore
+                        ORDER BY c.embedding <=> CAST(:query AS vector)
+                        LIMIT :topK
+                        """)
+                .param("query", toVectorLiteral(queryEmbedding))
+                .param("artistMbid", artistMbid)
+                .param("minScore", minScore)
+                .param("topK", topK)
+                .query((rs, rowNum) -> new RetrievedChunk(
+                        rs.getString("content"),
+                        rs.getString("title"),
+                        rs.getString("source_name"),
+                        rs.getString("source_url"),
+                        rs.getDouble("score")))
+                .list();
+    }
+
     /** pgvector 입력 리터럴: "[0.1,0.2,...]". */
     static String toVectorLiteral(float[] embedding) {
         StringBuilder sb = new StringBuilder("[");

@@ -232,6 +232,25 @@ Accept: text/event-stream
 
 - 근거 문서가 없거나 유사도 미달이면 본문이 정확히 `"정보 없음"` 1건 — 클라이언트 빈 상태 판별 문자열.
 
+### API-07a RAG Chat (E8, SSE)
+
+```
+POST /api/events/{id}/chat
+Content-Type: application/json / Accept: text/event-stream
+{ "messages": [{ "role": "user", "content": "꼭 들어야 하는 곡은?" }] }
+```
+
+| 구분 | 내용 |
+|------|------|
+| 방식 | tool calling(searchDocs=배경 문서 검색, getPredictionStats=예측 조회) 스트리밍. 도구 결과 밖 내용 생성 금지 프롬프트 |
+| 이력 | 클라이언트가 이전 메시지를 함께 전송(stateless). 서버는 최근 12메시지(6턴)만 사용 |
+| 검증 | 이벤트 없음 404 / 마지막 메시지가 비어 있거나 user가 아니면 400 / 질문 500자 초과 400 |
+| 비용 가드 | IP·이벤트당 분당 5회(429), `llm_call_log`(CHAT) 기록 |
+| SSE 순서 | `delta`* → `sources` → `done` — **출처가 도구 실행 후 확정되므로 곡 설명과 순서가 다르다**. 실패는 `error` 이벤트 |
+| 출처 | 문서 도구 사용 시 URL 목록, 통계 도구 사용 시 `{name: "Encore", url: "", title: "예측 데이터 기준"}` |
+
+EventSource는 POST 불가 — 프론트는 fetch 스트림으로 SSE를 파싱한다(`useChat`).
+
 ---
 
 ## 3. 관리자 API (`/api/admin/**`, Basic 인증)

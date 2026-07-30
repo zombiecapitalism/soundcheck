@@ -35,14 +35,26 @@ public class RagRetriever {
         if (!documentRepository.existsByArtistMbid(artistMbid)) {
             return List.of();
         }
+        return chunkRepository.search(artistMbid, songKey, embedQuery(queryText),
+                properties.topK(), properties.minScore());
+    }
+
+    /** Chat(E8)용 — 곡 필터 없이 아티스트 문서 전체를 검색한다. */
+    public List<RetrievedChunk> retrieveAll(UUID artistMbid, String queryText) {
+        if (!documentRepository.existsByArtistMbid(artistMbid)) {
+            return List.of();
+        }
+        return chunkRepository.searchAll(artistMbid, embedQuery(queryText),
+                properties.topK(), properties.minScore());
+    }
+
+    private float[] embedQuery(String queryText) {
         long start = System.currentTimeMillis();
         EmbeddingResponse response = embeddingModel.embedForResponse(List.of(queryText));
         llmCallRecorder.recordUsage(LlmCallType.EMBEDDING,
                 response.getMetadata() != null ? response.getMetadata().getModel() : null,
                 response.getMetadata() != null ? response.getMetadata().getUsage() : null,
                 System.currentTimeMillis() - start);
-        float[] queryEmbedding = response.getResults().getFirst().getOutput();
-        return chunkRepository.search(artistMbid, songKey, queryEmbedding,
-                properties.topK(), properties.minScore());
+        return response.getResults().getFirst().getOutput();
     }
 }

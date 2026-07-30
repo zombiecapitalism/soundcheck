@@ -1,6 +1,7 @@
 import { Fragment, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useAccuracy, useArtist, useEvent, useExpectedSetlist, usePredictions } from '../api/queries'
+import ChatSection from '../components/ChatSection'
 import ProbabilityBar from '../components/ProbabilityBar'
 import StatusView from '../components/StatusView'
 import { usePracticeChecklist } from '../hooks/usePracticeChecklist'
@@ -266,6 +267,8 @@ export default function PredictionsPage() {
           </ol>
         </>
       )}
+
+      {predictions && predictions.length > 0 && <ChatSection eventId={eventId} />}
     </>
   )
 }
