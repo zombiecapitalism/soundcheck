@@ -227,3 +227,75 @@ describe('boostEffectText', () => {
     expect(boostEffectText(null)).toBeNull()
   })
 })
+
+describe('예습 코스 (E7)', async () => {
+  const { COURSES, buildCourse, courseReason, courseSize, courseTier } = await import('./practice')
+
+  const prediction = (
+    rank: number,
+    probability: number,
+    extra: Partial<import('../api/types').Prediction> = {},
+  ): import('../api/types').Prediction => ({
+    rank,
+    songKey: `song-${rank}`,
+    songName: `Song ${rank}`,
+    probability,
+    playedCount: Math.round(probability * 20),
+    sampleSize: 20,
+    avgPosition: null,
+    encoreRatio: null,
+    recentCount5: null,
+    trend: null,
+    ...extra,
+  })
+
+  it('코스 시간 → 곡 수: 곡당 4.5분 버림, 최소 1곡', () => {
+    expect(courseSize(30)).toBe(6)
+    expect(courseSize(60)).toBe(13)
+    expect(courseSize(120)).toBe(26)
+    expect(courseSize(3)).toBe(1)
+    expect(COURSES.map((c) => c.minutes)).toEqual([30, 60, 120])
+  })
+
+  it('확률 구간 → 필수/추천/심화 (경계 포함)', () => {
+    expect(courseTier(0.8)).toBe('ESSENTIAL')
+    expect(courseTier(0.79)).toBe('RECOMMENDED')
+    expect(courseTier(0.5)).toBe('RECOMMENDED')
+    expect(courseTier(0.49)).toBe('DEEP')
+  })
+
+  it('필수 → 추천 → 심화 순으로 채우고, 심화는 앙코르·오프너 단골 우선', () => {
+    const predictions = [
+      prediction(1, 0.9), // 필수
+      prediction(2, 0.6), // 추천
+      prediction(3, 0.3), // 심화 (특징 없음)
+      prediction(4, 0.3, { encoreRatio: 0.7 }), // 심화 — 앙코르 단골이 먼저
+      prediction(5, 0.3, { avgPosition: 2 }), // 심화 — 오프너 단골이 그다음
+    ]
+    const course = buildCourse(predictions, 30) // 6곡 > 5곡 → 전부
+    expect(course.map((s) => s.prediction.rank)).toEqual([1, 2, 4, 5, 3])
+    expect(course[0].tier).toBe('ESSENTIAL')
+    expect(course[2].tier).toBe('DEEP')
+  })
+
+  it('곡 수 상한을 지킨다 — 30분 코스는 6곡', () => {
+    const predictions = Array.from({ length: 10 }, (_, i) => prediction(i + 1, 0.9))
+    expect(buildCourse(predictions, 30)).toHaveLength(6)
+  })
+
+  it('추천 이유는 근거 수치에서 나온다 — 고정곡 > 앙코르 > 오프너 > 상승세 > 폴백', () => {
+    expect(courseReason(prediction(1, 0.95, { playedCount: 19 }))).toBe(
+      '최근 20회 중 19회 연주된 고정곡',
+    )
+    expect(courseReason(prediction(1, 0.6, { playedCount: 12, encoreRatio: 0.6 }))).toContain(
+      '앙코르 단골',
+    )
+    expect(courseReason(prediction(1, 0.6, { playedCount: 12, avgPosition: 2 }))).toContain(
+      '오프너 단골',
+    )
+    expect(
+      courseReason(prediction(1, 0.6, { playedCount: 12, trend: 'RISING', recentCount5: 4 })),
+    ).toContain('상승세')
+    expect(courseReason(prediction(1, 0.6, { playedCount: 12 }))).toBe('최근 20회 중 12회 연주')
+  })
+})

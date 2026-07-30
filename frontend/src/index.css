@@ -1071,3 +1071,59 @@ select:focus {
   padding: 12px 0 4px;
   border-bottom: none;
 }
+
+/* 예습 코스 (E7) */
+.course-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.course-chip {
+  min-height: 32px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.course-chip.active {
+  color: var(--bg);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.course-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+.tier-badge {
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 2px 8px;
+  margin-right: 2px;
+}
+
+.tier-essential {
+  color: var(--bg);
+  background: var(--accent);
+}
+
+.tier-recommended {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.tier-deep {
+  color: var(--text-muted);
+  background: var(--track);
+}

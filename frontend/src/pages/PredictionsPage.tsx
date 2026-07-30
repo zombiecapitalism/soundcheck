@@ -4,7 +4,7 @@ import { useAccuracy, useArtist, useEvent, useExpectedSetlist, usePredictions } 
 import ProbabilityBar from '../components/ProbabilityBar'
 import StatusView from '../components/StatusView'
 import { usePracticeChecklist } from '../hooks/usePracticeChecklist'
-import { practiceProgress } from '../lib/practice'
+import { COURSES, buildCourse, practiceProgress, type CourseId, type CourseTier } from '../lib/practice'
 import {
   evidenceText,
   expectedSetSize,
@@ -15,6 +15,12 @@ import {
   trendBadge,
 } from '../lib/format'
 
+const TIER_LABELS: Record<CourseTier, string> = {
+  ESSENTIAL: '필수',
+  RECOMMENDED: '추천',
+  DEEP: '심화',
+}
+
 /** 예측 상세 — 곡별 확률 리스트. 각 항목에 F5 근거("최근 20회 중 19회 연주")를 함께 표기한다. */
 export default function PredictionsPage() {
   const eventId = Number(useParams().eventId)
@@ -24,8 +30,9 @@ export default function PredictionsPage() {
   const { data: predictions, isPending, isError, error, refetch } = usePredictions(eventId)
   const { data: accuracy } = useAccuracy(eventId, event?.verified ?? false)
   const playedByKey = new Map(accuracy?.results.map((r) => [r.songKey, r.played]) ?? [])
-  // 보기 전환: 확률순(기본) vs 예상 순서(백엔드가 본편/앙코르 블록으로 구성 — E6)
-  const [view, setView] = useState<'probability' | 'timeline'>('probability')
+  // 보기 전환: 확률순(기본) / 예상 순서(E6) / 예습 코스(E7)
+  const [view, setView] = useState<'probability' | 'timeline' | 'course'>('probability')
+  const [courseId, setCourseId] = useState<CourseId>('1h')
   const { data: expected } = useExpectedSetlist(eventId, view === 'timeline')
   const setSize = expectedSetSize(artist?.recentShows.avgSongCount, predictions ?? [])
   const predictionsByKey = new Map(predictions?.map((p) => [p.songKey, p]) ?? [])
@@ -36,10 +43,19 @@ export default function PredictionsPage() {
         .filter((p): p is NonNullable<typeof p> => p != null)
     : undefined
   const encoreStartIndex = expected && expected.encore.length > 0 ? expected.main.length : null
-  const displayed = view === 'timeline' ? timelineRows : predictions
-  // 예습 체크 — 기기 로컬 상태(localStorage)
+  // 예습 코스 — 필수/추천/심화 구분과 규칙 기반 추천 이유(E7)
+  const course = COURSES.find((c) => c.id === courseId) ?? COURSES[1]
+  const courseSongs = view === 'course' && predictions ? buildCourse(predictions, course.minutes) : undefined
+  const courseByKey = new Map(courseSongs?.map((song) => [song.prediction.songKey, song]) ?? [])
+  const displayed =
+    view === 'timeline' ? timelineRows
+    : view === 'course' ? courseSongs?.map((song) => song.prediction)
+    : predictions
+  // 예습 체크 — 기기 로컬 상태(localStorage). 코스 뷰에서는 코스 곡이 분모다
   const { checkedKeys, toggle } = usePracticeChecklist(eventId)
-  const progress = practiceProgress(predictions ?? [], checkedKeys, setSize)
+  const progress = view === 'course' && courseSongs
+    ? practiceProgress(courseSongs.map((song) => song.prediction), checkedKeys, courseSongs.length)
+    : practiceProgress(predictions ?? [], checkedKeys, setSize)
 
   // id가 숫자가 아니면 쿼리가 시작되지 않아 isPending이 영원히 true다 — 로딩으로 위장되면 안 된다
   if (!Number.isFinite(eventId)) {
@@ -124,7 +140,33 @@ export default function PredictionsPage() {
             >
               예상 순서
             </button>
+            <button
+              type="button"
+              className={view === 'course' ? 'toggle-button active' : 'toggle-button'}
+              onClick={() => setView('course')}
+            >
+              예습 코스
+            </button>
           </div>
+          {view === 'course' && (
+            <div className="course-picker" role="group" aria-label="예습 시간">
+              {COURSES.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={courseId === option.id ? 'course-chip active' : 'course-chip'}
+                  onClick={() => setCourseId(option.id)}
+                >
+                  {option.label}
+                </button>
+              ))}
+              {courseSongs && (
+                <span className="course-hint">
+                  곡당 4.5분 가정 · {courseSongs.length}곡
+                </span>
+              )}
+            </div>
+          )}
           {view === 'timeline' && expected && (
             <p className="view-hint">
               {event?.expectedShowType === 'FESTIVAL' ? '페스티벌' : '단독'} 평균{' '}
@@ -150,6 +192,7 @@ export default function PredictionsPage() {
               const played = playedByKey.get(prediction.songKey)
               const practiced = checkedKeys.has(prediction.songKey)
               const trend = trendBadge(prediction.trend)
+              const courseSong = view === 'course' ? courseByKey.get(prediction.songKey) : undefined
               return (
                 <Fragment key={prediction.songKey}>
                 {view === 'timeline' && index === encoreStartIndex && (
@@ -165,7 +208,7 @@ export default function PredictionsPage() {
                   >
                     <div className="prediction-row">
                       <span className="prediction-rank">
-                        {view === 'timeline' ? index + 1 : prediction.rank}
+                        {view === 'probability' ? prediction.rank : index + 1}
                       </span>
                       <span className="prediction-song">
                         {prediction.songName}
@@ -185,13 +228,22 @@ export default function PredictionsPage() {
                       </span>
                     </div>
                     {view === 'probability' && <ProbabilityBar probability={prediction.probability} />}
-                    <p className="prediction-evidence">
-                      {evidenceText(prediction.playedCount, prediction.sampleSize)}
-                      {position && <> · {position}</>}
-                      {isEncoreStaple(prediction.encoreRatio) && (
-                        <span className="encore-badge">앙코르 단골</span>
-                      )}
-                    </p>
+                    {courseSong ? (
+                      <p className="prediction-evidence">
+                        <span className={`tier-badge tier-${courseSong.tier.toLowerCase()}`}>
+                          {TIER_LABELS[courseSong.tier]}
+                        </span>{' '}
+                        {courseSong.reason}
+                      </p>
+                    ) : (
+                      <p className="prediction-evidence">
+                        {evidenceText(prediction.playedCount, prediction.sampleSize)}
+                        {position && <> · {position}</>}
+                        {isEncoreStaple(prediction.encoreRatio) && (
+                          <span className="encore-badge">앙코르 단골</span>
+                        )}
+                      </p>
+                    )}
                   </Link>
                   <button
                     type="button"
