@@ -3,6 +3,7 @@ package com.encore.rag.client;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -15,13 +16,18 @@ import java.util.Optional;
  * <ul>
  *   <li>검색으로 문서 제목을 찾고, extracts로 위키 마크업이 제거된 평문 본문을 받는다.</li>
  *   <li>출처 URL은 API가 주는 정식 URL(fullurl)을 쓴다 — 리다이렉트·특수문자 제목에도 안전.</li>
- *   <li>Wikipedia 에티켓: 식별 가능한 User-Agent + 요청 간 최소 간격.</li>
+ *   <li>Wikimedia 익명 rate limit이 엄격하다(2026-07-30 실측: 연속 요청 몇 건에 429) —
+ *       요청 간 최소 간격 + 429는 Retry-After 헤더를 존중해 재시도한다.</li>
  * </ul>
  */
 @Component
 public class WikipediaClient {
 
-    private static final long MIN_INTERVAL_MILLIS = 200;
+    private static final long MIN_INTERVAL_MILLIS = 1000;
+    private static final int MAX_RETRIES = 3;
+    /** Retry-After가 없거나 못 읽을 때의 대기(초). 상한은 서버가 큰 값을 줄 때의 보호선. */
+    private static final long DEFAULT_RETRY_AFTER_SECONDS = 5;
+    private static final long MAX_RETRY_AFTER_SECONDS = 60;
 
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
@@ -69,12 +75,45 @@ public class WikipediaClient {
     }
 
     private JsonNode get(String uriTemplate, Object... uriVariables) {
-        throttle();
-        String body = restClient.get()
-                .uri(uriTemplate, uriVariables)
-                .retrieve()
-                .body(String.class);
-        return objectMapper.readTree(body);
+        for (int attempt = 0; ; attempt++) {
+            throttle();
+            try {
+                String body = restClient.get()
+                        .uri(uriTemplate, uriVariables)
+                        .retrieve()
+                        .body(String.class);
+                return objectMapper.readTree(body);
+            } catch (RestClientResponseException e) {
+                // 429만 재시도한다 — 그 외 4xx는 다시 보내도 결과가 같다
+                if (e.getStatusCode().value() != 429 || attempt >= MAX_RETRIES) {
+                    throw e;
+                }
+                sleep(retryAfterMillis(e));
+            }
+        }
+    }
+
+    private static long retryAfterMillis(RestClientResponseException e) {
+        long seconds = DEFAULT_RETRY_AFTER_SECONDS;
+        String retryAfter = e.getResponseHeaders() != null
+                ? e.getResponseHeaders().getFirst("Retry-After") : null;
+        if (retryAfter != null) {
+            try {
+                seconds = Long.parseLong(retryAfter.trim());
+            } catch (NumberFormatException ignored) {
+                // 날짜 형식 Retry-After 등은 기본 대기로 대체
+            }
+        }
+        return Math.max(0, Math.min(seconds, MAX_RETRY_AFTER_SECONDS)) * 1000;
+    }
+
+    private static void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Wikipedia 재시도 대기 중 인터럽트", ie);
+        }
     }
 
     /** 요청 간 최소 간격 — 단순 정중함이지 rate limit 계약이 아니라 재시도 로직까지는 두지 않는다. */

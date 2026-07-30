@@ -21,6 +21,7 @@ import static org.springframework.http.HttpMethod.GET;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 /**
@@ -89,6 +90,24 @@ class WikipediaClientTest {
                 .andRespond(withSuccess(fixture("page-missing.json"), MediaType.APPLICATION_JSON));
 
         assertThat(client.fetchPage("en", "No Such Page Xyz")).isEmpty();
+    }
+
+    @Test
+    void retriesOn429HonoringRetryAfter() {
+        server.expect(requestTo(containsString("srsearch=Megadeth")))
+                .andRespond(withStatus(org.springframework.http.HttpStatus.TOO_MANY_REQUESTS)
+                        .headers(retryAfterZero())
+                        .body("You are making too many requests to the API."));
+        server.expect(requestTo(containsString("srsearch=Megadeth")))
+                .andRespond(withSuccess(fixture("search.json"), MediaType.APPLICATION_JSON));
+
+        assertThat(client.search("en", "Megadeth", 1)).isNotEmpty();
+    }
+
+    private static org.springframework.http.HttpHeaders retryAfterZero() {
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.set("Retry-After", "0"); // 테스트가 실제로 기다리지 않게 0초
+        return headers;
     }
 
     @Test
