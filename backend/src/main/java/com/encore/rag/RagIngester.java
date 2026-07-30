@@ -41,19 +41,22 @@ public class RagIngester {
     private final EmbeddingModel embeddingModel;
     private final RagDocumentRepository documentRepository;
     private final RagStore ragStore;
+    private final SongExplanationCache explanationCache;
     private final CollectionLogRepository collectionLogRepository;
     private final JdbcClient jdbcClient;
     private final RagProperties properties;
 
     public RagIngester(ArtistRepository artistRepository, WikipediaClient wikipediaClient,
                        EmbeddingModel embeddingModel, RagDocumentRepository documentRepository,
-                       RagStore ragStore, CollectionLogRepository collectionLogRepository,
+                       RagStore ragStore, SongExplanationCache explanationCache,
+                       CollectionLogRepository collectionLogRepository,
                        JdbcClient jdbcClient, RagProperties properties) {
         this.artistRepository = artistRepository;
         this.wikipediaClient = wikipediaClient;
         this.embeddingModel = embeddingModel;
         this.documentRepository = documentRepository;
         this.ragStore = ragStore;
+        this.explanationCache = explanationCache;
         this.collectionLogRepository = collectionLogRepository;
         this.jdbcClient = jdbcClient;
         this.properties = properties;
@@ -82,6 +85,10 @@ public class RagIngester {
                     case STORED -> fetched++;
                     case SKIPPED -> skipped++;
                 }
+            }
+            // 새 문서가 들어왔으면 이 아티스트의 캐시된 설명은 낡았다 — 지워서 재생성되게 한다
+            if (fetched > 0) {
+                explanationCache.evictArtist(artist.getMbid());
             }
             // counts 의미: fetched=저장된 문서 수, updated=저장된 청크 수, skipped=중복·검색 실패
             CollectionLog result = CollectionLog.success(JobType.EMBED, artist.getMbid(),

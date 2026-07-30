@@ -240,6 +240,18 @@ CREATE TABLE rag_chunk (
 
 CREATE INDEX idx_rag_chunk_embedding ON rag_chunk
     USING hnsw (embedding vector_cosine_ops);
+
+-- 생성 결과 캐시. 원천은 항상 rag_chunk 검색 + 생성이며,
+-- 새 문서 수집 시 아티스트 단위로 무효화된다.
+CREATE TABLE song_explanation (
+    id              BIGSERIAL PRIMARY KEY,
+    artist_mbid     UUID NOT NULL REFERENCES artist(mbid),
+    song_key        VARCHAR(300) NOT NULL,
+    content         TEXT NOT NULL,
+    sources         JSONB NOT NULL,                  -- [{name, url, title}]
+    generated_at    TIMESTAMPTZ NOT NULL,
+    UNIQUE (artist_mbid, song_key)
+);
 ```
 
 ---
