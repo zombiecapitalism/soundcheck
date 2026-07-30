@@ -3,6 +3,7 @@ package com.encore.api.admin;
 import com.encore.api.ApiNotFoundException;
 import com.encore.artist.Artist;
 import com.encore.artist.ArtistRepository;
+import com.encore.pipeline.CollectionPipeline;
 import com.encore.prediction.PredictionRepository;
 import com.encore.prediction.TargetEvent;
 import com.encore.prediction.TargetEventRepository;
@@ -28,16 +29,16 @@ public class AdminEventController {
     private final ArtistRepository artistRepository;
     private final TargetEventRepository targetEventRepository;
     private final PredictionRepository predictionRepository;
-    private final AdminBatchService batchService;
+    private final CollectionPipeline pipeline;
 
     public AdminEventController(ArtistRepository artistRepository,
                                 TargetEventRepository targetEventRepository,
                                 PredictionRepository predictionRepository,
-                                AdminBatchService batchService) {
+                                CollectionPipeline pipeline) {
         this.artistRepository = artistRepository;
         this.targetEventRepository = targetEventRepository;
         this.predictionRepository = predictionRepository;
-        this.batchService = batchService;
+        this.pipeline = pipeline;
     }
 
     @PostMapping
@@ -58,7 +59,7 @@ public class AdminEventController {
 
         // 예측은 조회·계산뿐이라 등록 직후 동기로 돌려도 부담이 없다.
         // 아직 수집 전이면 FAILED("집계할 공연이 없습니다")로 남는다 — 수집 후 재실행하면 된다.
-        batchService.predictNow();
+        pipeline.matchAndPredict();
         // 로그에서 "방금 실행분"을 추측하는 대신 이 이벤트의 예측 존재 여부로 판정한다 —
         // 같은 아티스트의 이벤트가 여럿이어도 정확하다.
         String predictionStatus = predictionRepository.existsByTargetEvent_Id(event.getId())

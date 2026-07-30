@@ -1,6 +1,7 @@
 package com.encore.api.admin;
 
 import com.encore.batch.CollectionLog;
+import com.encore.pipeline.CollectionPipeline;
 import com.encore.batch.CollectionLogRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -19,19 +20,19 @@ import java.util.UUID;
 @RequestMapping("/api/admin")
 public class AdminBatchController {
 
-    private final AdminBatchService batchService;
+    private final CollectionPipeline pipeline;
     private final CollectionLogRepository collectionLogRepository;
 
-    public AdminBatchController(AdminBatchService batchService,
+    public AdminBatchController(CollectionPipeline pipeline,
                                 CollectionLogRepository collectionLogRepository) {
-        this.batchService = batchService;
+        this.pipeline = pipeline;
         this.collectionLogRepository = collectionLogRepository;
     }
 
-    /** 수집 시작(비동기). 페스티벌 직후 즉시 재수집 용도(docs 4장). 이미 실행 중이면 409. */
+    /** 수집 시작(비동기) — 완료되면 매칭·예측까지 이어진다. 이미 실행 중이면 409. */
     @PostMapping("/batch/collect")
     public ResponseEntity<Object> collect() {
-        if (!batchService.tryStartCollection()) {
+        if (!pipeline.tryStartCollection()) {
             ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
                     "수집이 이미 실행 중입니다. 완료 후 다시 시도하세요.");
             problem.setTitle("이미 실행 중");
@@ -40,17 +41,17 @@ public class AdminBatchController {
         return ResponseEntity.accepted().body(new CollectStarted(true));
     }
 
-    /** 예측 재계산(동기) — 다가오는 이벤트 전체. */
+    /** 적중률 매칭 + 예측 재계산(동기) — 다가오는 이벤트 전체. */
     @PostMapping("/batch/predict")
     public List<LogEntry> predict() {
-        return batchService.predictNow().stream().map(LogEntry::from).toList();
+        return pipeline.matchAndPredict().stream().map(LogEntry::from).toList();
     }
 
     /** 최근 배치 이력 + 수집 진행 여부. */
     @GetMapping("/logs")
     public LogsResponse logs() {
         return new LogsResponse(
-                batchService.isCollecting(),
+                pipeline.isCollecting(),
                 collectionLogRepository.findTop30ByOrderByIdDesc().stream().map(LogEntry::from).toList());
     }
 
