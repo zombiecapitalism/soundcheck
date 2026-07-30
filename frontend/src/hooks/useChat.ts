@@ -56,9 +56,13 @@ export function useChat(eventId: number) {
     const history = [...state.turns, { role: 'user' as const, content: trimmed }]
     let answer = ''
     let sources: ExplanationSource[] = []
+    // 공백뿐인 답을 턴으로 남기면 서버의 이력 검증(isBlank 거부)에 걸려 이후 대화가 전부 400이 된다
     const update = (status: ChatState['status'], errorMessage: string | null = null) =>
       setState({
-        turns: [...history, ...(answer ? [{ role: 'assistant' as const, content: answer, sources }] : [])],
+        turns: [
+          ...history,
+          ...(answer.trim() ? [{ role: 'assistant' as const, content: answer, sources }] : []),
+        ],
         status,
         errorMessage,
       })
@@ -105,8 +109,8 @@ export function useChat(eventId: number) {
             sources = JSON.parse(sse.data) as ExplanationSource[]
           } else if (sse.event === 'done') {
             finished = true
-            // delta 없이 done만 오면(모델 빈 응답) 질문만 남고 아무 표시가 없다 — 오류로 알린다
-            if (answer) {
+            // delta 없이(또는 공백만) done이 오면 질문만 남고 아무 표시가 없다 — 오류로 알린다
+            if (answer.trim()) {
               update('idle')
             } else {
               update('error', '답변을 받지 못했어요. 다시 시도해 주세요.')
@@ -119,7 +123,7 @@ export function useChat(eventId: number) {
       }
       if (!finished) {
         // done 없이 스트림이 끊김 — 받은 게 있으면 그만큼 보여주고, 없으면 오류로 알린다
-        if (answer) {
+        if (answer.trim()) {
           update('idle')
         } else {
           update('error', '연결이 끊겼어요. 다시 시도해 주세요.')

@@ -436,6 +436,13 @@ class ApiIntegrationTest {
                                 {"messages":[{"role":"user","content":"%s"}]}"""
                                 .formatted("가".repeat(501))))
                 .andExpect(status().isBadRequest());
+        // 이력 메시지 길이 초과 — 질문만 제한하면 앞 이력으로 토큰 비용 가드가 뚫린다
+        mockMvc.perform(post("/api/events/{id}/chat", event.getId()).contentType(json)
+                        .content("""
+                                {"messages":[{"role":"assistant","content":"%s"},
+                                             {"role":"user","content":"질문"}]}"""
+                                .formatted("가".repeat(2001))))
+                .andExpect(status().isBadRequest());
         // 빈 메시지 목록
         mockMvc.perform(post("/api/events/{id}/chat", event.getId()).contentType(json)
                         .content("{\"messages\":[]}"))

@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -89,23 +90,40 @@ public class PlaylistService {
 
     private SongVideo resolveAndCache(UUID artistMbid, String artistName,
                                       String songKey, String songName) {
-        Optional<YoutubeClient.FoundVideo> found =
-                youtubeClient.searchVideo(artistName + " " + songName);
+        Optional<YoutubeClient.FoundVideo> found;
+        try {
+            found = youtubeClient.searchVideo(artistName + " " + songName);
+        } catch (RestClientException e) {
+            // 쿼터 초과·네트워크 오류 등 일시 실패: 이 곡만 missing으로 응답하고(부분 성공),
+            // 네거티브 캐시하지 않는다 — 복구되면 다음 요청에서 다시 시도돼야 한다.
+            // 예외 메시지는 로그에 남기지 않는다 — ResourceAccessException 메시지에는
+            // API 키가 포함된 요청 URL이 들어갈 수 있다.
+            log.warn("YouTube 검색 실패({}) — 이번 요청에서만 missing 처리, 캐시 안 함: {}",
+                    e.getClass().getSimpleName(), songName);
+            return SongVideo.builder().artistMbid(artistMbid).songKey(songKey).build();
+        }
         SongVideo video = SongVideo.builder()
                 .artistMbid(artistMbid)
                 .songKey(songKey)
                 .videoId(found.map(YoutubeClient.FoundVideo::videoId).orElse(null))
-                .videoTitle(found.map(YoutubeClient.FoundVideo::title).orElse(null))
+                // 컬럼 VARCHAR(300) — API의 HTML 이스케이프된 제목이 넘칠 수 있어 잘라 저장
+                .videoTitle(found.map(YoutubeClient.FoundVideo::title)
+                        .map(title -> title.length() > 300 ? title.substring(0, 300) : title)
+                        .orElse(null))
                 .build();
         try {
             return songVideoRepository.save(video);
         } catch (DataIntegrityViolationException e) {
             // 동시 요청이 같은 곡을 먼저 저장했다 — 그 결과를 쓰면 된다
-            log.debug("song_video 동시 저장 충돌, 기존 캐시 사용: {} / {}", artistMbid, songKey);
             return songVideoRepository
                     .findByArtistMbidAndSongKeyIn(artistMbid, List.of(songKey)).stream()
                     .findFirst()
-                    .orElse(video);
+                    .orElseGet(() -> {
+                        // 유니크 충돌이 아닌 무결성 위반(예상 밖) — 조용히 넘기면 쿼터 누수가 된다
+                        log.warn("song_video 저장 실패 후 재조회도 실패(캐시 안 됨): {} / {}",
+                                artistMbid, songKey, e);
+                        return video;
+                    });
         }
     }
 }

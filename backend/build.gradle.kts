@@ -6,7 +6,7 @@ plugins {
 
 group = "com.encore"
 version = "0.0.1-SNAPSHOT"
-description = "Encore backend"
+description = "Soundcheck backend"
 
 java {
 	toolchain {

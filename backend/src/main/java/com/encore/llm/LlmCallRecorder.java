@@ -49,6 +49,14 @@ public class LlmCallRecorder {
         record(type, null, null, null, 0, true, null);
     }
 
+    /** error_message 센티널 — 취소는 오류도 성공도 아니라 별도 집계된다(대시보드). */
+    public static final String CANCELLED = "cancelled";
+
+    /** 클라이언트가 스트림을 중간에 끊음 — 비용은 발생했으므로 기록하되 성공과 구분한다. */
+    public void recordCancelled(LlmCallType type, long latencyMs) {
+        record(type, null, null, null, latencyMs, false, CANCELLED);
+    }
+
     public void recordError(LlmCallType type, String model, long latencyMs, String message) {
         record(type, model, null, null, latencyMs, false,
                 message != null ? message : "unknown error");

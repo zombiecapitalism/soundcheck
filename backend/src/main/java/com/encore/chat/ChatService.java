@@ -28,6 +28,8 @@ public class ChatService {
     /** 최근 6턴(질문+답 12메시지) 상한 — 프롬프트 비용과 길이를 묶는다. */
     public static final int MAX_MESSAGES = 12;
     public static final int MAX_QUESTION_CHARS = 500;
+    /** 이력 메시지 1건 상한 — 질문만 제한하면 앞 이력을 수 MB로 채워 토큰 비용이 뚫린다. */
+    public static final int MAX_HISTORY_MESSAGE_CHARS = 2000;
 
     public record ChatMessage(String role, String content) {
     }
@@ -89,8 +91,8 @@ public class ChatService {
                 })
                 .doOnCancel(() -> {
                     if (recorded.compareAndSet(false, true)) {
-                        llmCallRecorder.record(LlmCallType.CHAT, null, null, null,
-                                System.currentTimeMillis() - start, false, null);
+                        llmCallRecorder.recordCancelled(LlmCallType.CHAT,
+                                System.currentTimeMillis() - start);
                     }
                 });
         return new ChatStream(tokens, tools::usedSources);

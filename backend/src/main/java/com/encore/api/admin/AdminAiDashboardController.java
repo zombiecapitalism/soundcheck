@@ -30,7 +30,8 @@ public class AdminAiDashboardController {
     }
 
     public record TypeRow(String callType, long calls, Integer avgLatencyMs,
-                          long inputTokens, long outputTokens, long cacheHits, long errors) {
+                          long inputTokens, long outputTokens, long cacheHits,
+                          long cancelled, long errors) {
     }
 
     public record AiDashboardResponse(
@@ -84,6 +85,7 @@ public class AdminAiDashboardController {
                                 row.getInputTokens(),
                                 row.getOutputTokens(),
                                 row.getCacheHits(),
+                                row.getCancelled(),
                                 row.getErrors()))
                         .toList());
     }

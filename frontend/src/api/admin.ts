@@ -155,6 +155,8 @@ export interface AiDashboard {
     inputTokens: number
     outputTokens: number
     cacheHits: number
+    /** 클라이언트가 스트림을 끊은 호출 — 비용은 발생, 오류 아님 */
+    cancelled: number
     errors: number
   }[]
 }

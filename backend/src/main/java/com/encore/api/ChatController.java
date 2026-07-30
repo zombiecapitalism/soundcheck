@@ -85,6 +85,11 @@ public class ChatController {
                 throw new IllegalArgumentException(
                         "메시지는 user/assistant role과 비어 있지 않은 content가 필요합니다");
             }
+            // 질문(500자)만 제한하면 앞 이력을 거대하게 채워 토큰 비용 가드가 뚫린다
+            if (message.content().length() > ChatService.MAX_HISTORY_MESSAGE_CHARS) {
+                throw new IllegalArgumentException("이력 메시지가 너무 깁니다 (메시지당 최대 "
+                        + ChatService.MAX_HISTORY_MESSAGE_CHARS + "자)");
+            }
         }
         ChatMessage last = request.messages().getLast();
         if (!"user".equals(last.role())) {

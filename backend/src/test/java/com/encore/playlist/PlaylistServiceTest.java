@@ -117,6 +117,28 @@ class PlaylistServiceTest {
         verify(youtubeClient, times(1)).searchVideo(anyString());
     }
 
+    /** 검색 일시 실패(쿼터 초과 등)는 그 곡만 missing — 전체 요청이 500으로 죽으면 안 되고,
+     *  네거티브 캐시도 하면 안 된다(복구되면 다음 요청에서 재시도). */
+    @Test
+    void transientSearchFailureIsIsolatedAndNotCached() {
+        when(youtubeClient.searchVideo(contains("Holy Wars")))
+                .thenThrow(new org.springframework.web.client.RestClientException("quota"))
+                .thenReturn(Optional.of(new YoutubeClient.FoundVideo("vid-1", "복구됨")));
+        when(youtubeClient.searchVideo(contains("Trust")))
+                .thenReturn(Optional.of(new YoutubeClient.FoundVideo("vid-trust", "Trust")));
+
+        PlaylistService.Playlist first = service.build(event, List.of("holy wars", "trust"));
+        // 실패한 곡만 missing, 나머지는 부분 성공
+        assertThat(first.url()).contains("vid-trust");
+        assertThat(first.missing()).extracting(PlaylistService.Item::songKey)
+                .containsExactly("holy wars");
+
+        // 캐시되지 않았으므로 다음 요청에서 재시도 → 복구
+        PlaylistService.Playlist second = service.build(event, List.of("holy wars"));
+        assertThat(second.missing()).isEmpty();
+        assertThat(second.url()).contains("vid-1");
+    }
+
     /** 예측 밖 곡은 검색 자체를 하지 않는다 — 임의 곡명으로 쿼터가 새면 안 된다. */
     @Test
     void ignoresKeysOutsidePredictions() {

@@ -53,7 +53,8 @@ public class PlaylistController {
         if (request == null || request.songKeys() == null || request.songKeys().isEmpty()) {
             throw new IllegalArgumentException("곡을 하나 이상 선택해 주세요");
         }
-        if (request.songKeys().size() > PlaylistLinks.MAX_VIDEOS) {
+        // 서비스가 중복을 제거하므로 상한도 중복 제거 후 기준으로 검사한다
+        if (request.songKeys().stream().distinct().count() > PlaylistLinks.MAX_VIDEOS) {
             throw new IllegalArgumentException(
                     "한 번에 " + PlaylistLinks.MAX_VIDEOS + "곡까지 담을 수 있어요");
         }

@@ -80,8 +80,8 @@ public class SongExplanationService {
                 })
                 .doOnCancel(() -> {
                     if (recorded.compareAndSet(false, true)) {
-                        llmCallRecorder.record(LlmCallType.EXPLANATION, null, null, null,
-                                System.currentTimeMillis() - start, false, null);
+                        llmCallRecorder.recordCancelled(LlmCallType.EXPLANATION,
+                                System.currentTimeMillis() - start);
                     }
                 })
                 // 끝까지 생성된 것만 저장한다 — 중간에 끊긴 스트림은 캐시되지 않는다

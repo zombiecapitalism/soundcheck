@@ -225,6 +225,7 @@ function AiDashboardSection() {
                     <th>평균 지연</th>
                     <th>토큰(입/출)</th>
                     <th>캐시</th>
+                    <th>취소</th>
                     <th>오류</th>
                   </tr>
                 </thead>
@@ -238,6 +239,7 @@ function AiDashboardSection() {
                         {row.inputTokens.toLocaleString()}/{row.outputTokens.toLocaleString()}
                       </td>
                       <td>{row.cacheHits}</td>
+                      <td>{row.cancelled}</td>
                       <td>{row.errors}</td>
                     </tr>
                   ))}

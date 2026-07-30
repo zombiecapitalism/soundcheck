@@ -60,12 +60,14 @@ export default function PredictionsPage() {
     : predictions
   // 예습 체크 — 기기 로컬 상태(localStorage). 코스 뷰에서는 코스 곡이 분모다
   const { checkedKeys, toggle } = usePracticeChecklist(eventId)
-  // 묶음 듣기(E12) 대상: 코스 뷰=코스 곡, 체크한 곡이 있으면 그 곡들(확률순), 없으면 상위 예상 셋
-  const playlistKeys =
+  // 묶음 듣기(E12) 대상: 코스 뷰=코스 곡, 체크한 곡이 있으면 그 곡들(확률순), 없으면 상위 예상 셋.
+  // 상한 50(watch_videos 한계)을 여기서 적용해야 버튼 라벨의 곡 수와 실제 재생이 일치한다
+  const playlistKeys = (
     view === 'course' && courseSongs ? courseSongs.map((song) => song.prediction.songKey)
     : checkedKeys.size > 0
       ? (predictions ?? []).filter((p) => checkedKeys.has(p.songKey)).map((p) => p.songKey)
       : (predictions ?? []).slice(0, setSize).map((p) => p.songKey)
+  ).slice(0, 50)
   const playlistLabel =
     view === 'course' && courseSongs ? `코스 ${playlistKeys.length}곡`
     : checkedKeys.size > 0 ? `체크한 ${playlistKeys.length}곡`
