@@ -1,5 +1,7 @@
 # Render Blueprint — 무료 공개 배포 (docs/setlist-prd.md의 단일 서버 구성과 별개 경로).
-# DB는 Render에 없다: Neon 무료 Postgres(pgvector)를 쓰고 DB_URL로 주입한다.
+# DB는 Render에 없다: Supabase 무료 Postgres(pgvector)를 쓰고 DB_URL로 주입한다.
+# Supabase는 반드시 "Session pooler"(포트 5432) 접속 문자열을 쓸 것 — direct 접속은
+# IPv6 전용이라 Render에서 안 붙고, transaction pooler(6543)는 prepared statement와 충돌한다.
 #
 # 배포 절차: GitHub 푸시 → Render 대시보드에서 "New > Blueprint" → 이 저장소 선택
 # → sync:false 환경변수들을 대시보드에서 채운다.
@@ -20,7 +22,7 @@ services:
     envVars:
       - key: JAVA_TOOL_OPTIONS
         value: "-XX:MaxRAMPercentage=75.0"   # 무료 512MB에서 힙 과점유로 OOM-kill 방지
-      - key: DB_URL          # Neon JDBC URL — jdbc:postgresql://<host>/<db>?sslmode=require
+      - key: DB_URL          # Supabase 세션 풀러 JDBC URL — jdbc:postgresql://<pooler-host>:5432/postgres?sslmode=require
         sync: false
       - key: DB_USERNAME
         sync: false
