@@ -1,0 +1,56 @@
+# Render Blueprint — 무료 공개 배포 (docs/setlist-prd.md의 단일 서버 구성과 별개 경로).
+# DB는 Render에 없다: Neon 무료 Postgres(pgvector)를 쓰고 DB_URL로 주입한다.
+#
+# 배포 절차: GitHub 푸시 → Render 대시보드에서 "New > Blueprint" → 이 저장소 선택
+# → sync:false 환경변수들을 대시보드에서 채운다.
+#
+# 주의(무료 플랜 제약):
+# - 백엔드는 15분 무트래픽 시 슬립 → 첫 요청 30초~1분 콜드스타트.
+# - 일일 파이프라인(05:30 KST)은 슬립 중엔 안 돈다 — 외부 크론(cron-job.org)으로
+#   05:15~05:45 KST에 /api/events를 5분 간격 핑해서 깨워둘 것.
+services:
+  - type: web
+    name: soundcheck-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/events
+    envVars:
+      - key: JAVA_TOOL_OPTIONS
+        value: "-XX:MaxRAMPercentage=75.0"   # 무료 512MB에서 힙 과점유로 OOM-kill 방지
+      - key: DB_URL          # Neon JDBC URL — jdbc:postgresql://<host>/<db>?sslmode=require
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: SETLIST_FM_API_KEY
+        sync: false
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: YOUTUBE_API_KEY
+        sync: false
+      - key: RAG_CONTACT
+        sync: false
+
+  # 프론트 정적 사이트 — /api/*를 백엔드로 리라이트(프록시)해서 같은 오리진 유지(CORS 불필요).
+  # 백엔드 서비스명이 위와 달라지면(이름 중복 등) destination도 함께 고칠 것.
+  - type: web
+    name: soundcheck
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://soundcheck-api.onrender.com/api/*
+      - type: rewrite
+        source: /*
+        destination: /index.html

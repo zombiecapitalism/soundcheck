@@ -5,7 +5,9 @@ spring:
     problemdetails:
       enabled: true # 프레임워크가 만드는 에러(404/405 등)도 RFC 7807로 응답
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:encore}
+    # DB_URL이 있으면 그대로 쓴다 — 관리형 DB(Neon 등)는 sslmode 등 접속 파라미터가 필요해서
+    # 호스트/포트/DB명 조합만으로는 못 만든다. 없으면 기존 조합 방식(로컬·prod compose).
+    url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:encore}}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
   jpa:
