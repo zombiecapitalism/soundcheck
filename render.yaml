@@ -52,7 +52,8 @@ services:
     routes:
       - type: rewrite
         source: /api/*
-        destination: https://soundcheck-api.onrender.com/api/*
+        # 실제 생성된 서비스 URL(이름 선점으로 접미사 붙음) — 서비스 재생성 시 함께 갱신할 것
+        destination: https://soundcheck-api-0d7l.onrender.com/api/*
       - type: rewrite
         source: /*
         destination: /index.html
