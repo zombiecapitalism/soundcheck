@@ -7,6 +7,16 @@ import { api } from '../api/client'
  * (fetch 이후의 window.open은 팝업으로 차단된다). 그래도 차단되면(win null)
  * 직접 누를 수 있는 링크를 노출한다 — 성공했는데 무반응이면 재클릭으로 쿼터만 탄다.
  */
+
+/** 응답을 기다리는 동안 새 탭이 빈 화면이면 오류로 보인다 — 최소한의 대기 안내를 그려 둔다. */
+function paintWaiting(win: Window) {
+  win.document.title = '재생목록 준비 중…'
+  win.document.body.style.cssText =
+    'margin:0;display:grid;place-items:center;min-height:100vh;' +
+    'font-family:system-ui,sans-serif;color:#666;background:#fafafa'
+  win.document.body.textContent = 'YouTube 재생목록을 준비하고 있어요… 잠시만 기다려 주세요.'
+}
+
 export default function PlaylistButton({
   eventId,
   songKeys,
@@ -26,6 +36,9 @@ export default function PlaylistButton({
       return
     }
     const win = window.open('', '_blank')
+    if (win) {
+      paintWaiting(win)
+    }
     setLoading(true)
     setError(null)
     setMissing([])
