@@ -20,6 +20,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -137,6 +139,21 @@ class PlaylistServiceTest {
         PlaylistService.Playlist second = service.build(event, List.of("holy wars"));
         assertThat(second.missing()).isEmpty();
         assertThat(second.url()).contains("vid-1");
+    }
+
+    /** 캐시 미스 곡 검색은 병렬 — 두 검색이 동시에 진행 중이어야 배리어가 열린다(순차면 타임아웃). */
+    @Test
+    void searchesMissesConcurrently() {
+        CyclicBarrier bothSearching = new CyclicBarrier(2);
+        when(youtubeClient.searchVideo(anyString())).thenAnswer(invocation -> {
+            bothSearching.await(5, TimeUnit.SECONDS);
+            return Optional.of(new YoutubeClient.FoundVideo("vid", "제목"));
+        });
+
+        PlaylistService.Playlist playlist = service.build(event, List.of("holy wars", "trust"));
+
+        assertThat(playlist.missing()).isEmpty();
+        assertThat(playlist.songs()).hasSize(2);
     }
 
     /** 예측 밖 곡은 검색 자체를 하지 않는다 — 임의 곡명으로 쿼터가 새면 안 된다. */
