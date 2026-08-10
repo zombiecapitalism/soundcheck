@@ -151,6 +151,11 @@ export interface AiDashboard {
   }[]
 }
 
+export interface FestivalMapping {
+  id: number
+  keyword: string
+}
+
 export const adminApi = {
   logs: () => adminRequest<LogsResponse>('/api/admin/logs'),
   koreaShows: () => adminRequest<KoreaShow[]>('/api/admin/korea-shows'),
@@ -184,4 +189,14 @@ export const adminApi = {
     adminRequestVoid(`/api/admin/rag/documents/${id}`, { method: 'DELETE' }),
   evictExplanationCache: (artistMbid: string) =>
     adminRequestVoid(`/api/admin/rag/cache/${artistMbid}`, { method: 'DELETE' }),
+  festivalMappings: () => adminRequest<FestivalMapping[]>('/api/admin/festival-mappings'),
+  addFestivalMapping: (keyword: string) =>
+    adminRequest<FestivalMapping>('/api/admin/festival-mappings', {
+      method: 'POST',
+      body: JSON.stringify({ keyword }),
+    }),
+  deleteFestivalMapping: (id: number) =>
+    adminRequestVoid(`/api/admin/festival-mappings/${id}`, { method: 'DELETE' }),
+  reclassifyShows: () =>
+    adminRequest<{ changed: number }>('/api/admin/festival-mappings/reclassify', { method: 'POST' }),
 }

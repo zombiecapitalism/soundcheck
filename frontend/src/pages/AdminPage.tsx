@@ -114,6 +114,7 @@ function AdminConsole({ onAuthExpired }: { onAuthExpired: () => void }) {
       />
       <AiDashboardSection />
       <RagSection />
+      <FestivalMappingSection onChanged={invalidate} />
       <KoreaShowSection onRegistered={invalidate} />
       <ArtistSection onRegistered={invalidate} />
       <EventSection onCreated={invalidate} />
@@ -374,6 +375,88 @@ function RagSection() {
  * 내한 자동 감지 — 별도 크롤링 없이 수집 데이터의 KR 미래 공연을 보여준다.
  * setlist.fm은 공연 발표 시 곡 없는 페이지가 먼저 생기므로 수집만 돌면 잡힌다.
  */
+function FestivalMappingSection({ onChanged }: { onChanged: () => void }) {
+  const queryClient = useQueryClient()
+  const [keyword, setKeyword] = useState('')
+
+  const mappings = useQuery({
+    queryKey: ['admin', 'festival-mappings'],
+    queryFn: adminApi.festivalMappings,
+  })
+  const invalidateMappings = () =>
+    queryClient.invalidateQueries({ queryKey: ['admin', 'festival-mappings'] })
+
+  const add = useMutation({
+    mutationFn: adminApi.addFestivalMapping,
+    onSuccess: () => {
+      setKeyword('')
+      invalidateMappings()
+    },
+  })
+  const remove = useMutation({ mutationFn: adminApi.deleteFestivalMapping, onSuccess: invalidateMappings })
+  // 재분류는 기존 수집분의 show_type을 바꾸므로 통계·예측 화면 캐시도 함께 무효화한다
+  const reclassify = useMutation({ mutationFn: adminApi.reclassifyShows, onSuccess: onChanged })
+
+  return (
+    <section className="admin-section">
+      <h2>페스티벌 매핑</h2>
+      <p className="form-hint">
+        venue/tour명에 키워드가 포함되면 FESTIVAL로 판정해요. 대형 페스티벌은 스테이지명(예: 후지록
+        &quot;GREEN STAGE&quot;)으로 등록되는 경우가 많아 기본 키워드에 안 걸려요. 추가·삭제 후에는
+        재분류를 실행해야 이미 수집된 공연에 반영돼요.
+      </p>
+      <form
+        className="admin-actions"
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (keyword.trim()) add.mutate(keyword.trim())
+        }}
+      >
+        <input
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          placeholder="예: GREEN STAGE"
+        />
+        <button type="submit" className="primary-button" disabled={add.isPending || !keyword.trim()}>
+          추가
+        </button>
+        <button
+          type="button"
+          className="primary-button"
+          disabled={reclassify.isPending}
+          onClick={() => reclassify.mutate()}
+        >
+          {reclassify.isPending ? '재분류 중…' : '기존 공연 재분류'}
+        </button>
+      </form>
+      {add.error && <p className="form-error">{add.error.message}</p>}
+      {reclassify.isSuccess && (
+        <p className="form-hint">재분류 완료 — 판정이 바뀐 공연 {reclassify.data.changed}건</p>
+      )}
+      {reclassify.error && <p className="form-error">{reclassify.error.message}</p>}
+      {mappings.data && mappings.data.length > 0 ? (
+        <ul className="admin-list">
+          {mappings.data.map((m) => (
+            <li key={m.id}>
+              <span>{m.keyword}</span>
+              <button
+                type="button"
+                className="text-button"
+                disabled={remove.isPending}
+                onClick={() => remove.mutate(m.id)}
+              >
+                삭제
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="form-hint">등록된 키워드가 없어요.</p>
+      )}
+    </section>
+  )
+}
+
 function KoreaShowSection({ onRegistered }: { onRegistered: () => void }) {
   const shows = useQuery({ queryKey: ['admin', 'korea-shows'], queryFn: adminApi.koreaShows })
   const register = useMutation({
