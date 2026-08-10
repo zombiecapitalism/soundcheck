@@ -92,6 +92,23 @@
      지표는 환원 불가능 버킷 제외본을 함께 본다.
   3. 채택 파라미터는 전향 원칙대로 부산국제록페(10/2) 공연 전 신규 스냅샷에만 반영.
 
+### 2026-08-10 — 페스티벌 매핑 11건 등록 + 전체 재분류 (파라미터 변경 없음)
+
+- 등록 키워드: GREEN STAGE(후지록), KB Kookmin Card Stage(펜타포트), Mainstage 01/02(Hellfest),
+  Suvilahti(Tuska/Flow), Parc de Can Zam(Rock Fest BCN), Plateia Nerou(Release Athens),
+  Park 360(Rock for People), Stocznia Gdańska(Mystic), North Stage(Graspop), 삼락생태공원(부산국제록페 선제)
+- 재분류 결과: 판정 변경 15건 (GREEN STAGE 라운드 2건 + 본 라운드 13건). 아티스트별
+  FESTIVAL 분포 — Khruangbin 4 / Pixies 3 / MA 2 / A7X 5 / Megadeth 7. 과잉 매칭 징후 없음.
+- 효과: **Megadeth 표본 20회 중 7회가 FESTIVAL로 승격** — 부산 예측에서 유형 부스트가
+  처음으로 실질 작동한다. 펜타포트 실공연 3건도 FESTIVAL로 승격되어 국내 페스티벌 셋
+  표본이 확보됐다. 반영은 다음 predictUpcoming(일일 파이프라인 또는 수동 재계산)부터.
+- ~~미해결~~ → 같은 날 해결: **A7X Statica 별칭 세트 오염** — 표본 20슬롯 중 7개가
+  같은 날짜의 4곡짜리 "Statica"(A7X의 가상 오프닝 밴드 명의) 세트라 본 세트 곡 확률이
+  일괄 희석됐다. `PredictionSampling`에 채점(AccuracyService)과 동일한 「같은 날 여러
+  세트면 실연주 곡 최대 세트만」 규칙을 적용했다(동수면 setlistId, limit은 dedup 후).
+  근거 표본과 채점 정답이 같은 세트를 가리키게 된 것이 부수 효과. 반영은 다음
+  predictUpcoming부터 — A7X 부산 스냅샷의 확률 전반이 올라갈 것으로 예상.
+
 ### (다음 기록 양식)
 
 ```
