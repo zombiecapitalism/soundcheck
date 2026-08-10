@@ -231,6 +231,54 @@ class AdminApiIntegrationTest {
     }
 
     @Test
+    void festivalMappingCrudAndReclassifyFlow() throws Exception {
+        mockMvc.perform(post("/api/admin/festival-mappings")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"keyword\":\"GREEN STAGE\"}"))
+                .andExpect(status().isUnauthorized());
+
+        Artist artist = artistRepository.saveAndFlush(Artist.builder()
+                .mbid(UUID.randomUUID()).name("Khruangbin").build());
+        persistShow(artist, "fm-s1", LocalDate.of(2026, 7, 25), "JP", "GREEN STAGE");
+        entityManager.flush();
+
+        String created = mockMvc.perform(post("/api/admin/festival-mappings")
+                        .with(httpBasic(USER, PASS))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"keyword\":\" GREEN STAGE \"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.keyword").value("GREEN STAGE"))
+                .andReturn().getResponse().getContentAsString();
+
+        // 앞뒤 공백은 저장 전에 걷어내므로 재등록은 중복이다
+        mockMvc.perform(post("/api/admin/festival-mappings")
+                        .with(httpBasic(USER, PASS))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"keyword\":\"GREEN STAGE\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.title").value("중복 키워드"));
+
+        mockMvc.perform(post("/api/admin/festival-mappings")
+                        .with(httpBasic(USER, PASS))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"keyword\":\"  \"}"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/api/admin/festival-mappings/reclassify").with(httpBasic(USER, PASS)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.changed").value(1));
+        entityManager.flush();
+        entityManager.clear();
+        assertThat(entityManager.find(Show.class, "fm-s1").getShowType())
+                .isEqualTo(ShowType.FESTIVAL);
+
+        long id = new tools.jackson.databind.ObjectMapper()
+                .readTree(created).get("id").asLong();
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .delete("/api/admin/festival-mappings/" + id).with(httpBasic(USER, PASS)))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(get("/api/admin/festival-mappings").with(httpBasic(USER, PASS)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
     void collectConflictsWhileAlreadyRunning() throws Exception {
         assertThat(batchLock.tryAcquireCollect()).isTrue();
         try {

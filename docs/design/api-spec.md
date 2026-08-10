@@ -390,6 +390,20 @@ DELETE /api/admin/rag/documents/{id}        — 문서 삭제(청크 FK CASCADE 
 DELETE /api/admin/rag/cache/{artistMbid}    — 설명 캐시 아티스트 단위 무효화
 ```
 
+### API-14c 페스티벌 매핑 관리 + 재분류
+
+```
+GET    /api/admin/festival-mappings             — 키워드 목록
+POST   /api/admin/festival-mappings             — 추가 { "keyword": "GREEN STAGE" } → 201 / 빈 값 400 / 중복 409
+DELETE /api/admin/festival-mappings/{id}        — 삭제 → 204 / 없으면 404
+POST   /api/admin/festival-mappings/reclassify  — 전체 공연 show_type 재판정(동기) → { "changed": n }
+```
+
+- 분류는 수집 시점에만 적용되고 versionId가 같으면 SKIPPED되므로, 키워드 변경 후
+  재분류를 실행해야 기존 수집분에 반영된다 (`ShowReclassifier`).
+- 재분류는 지난 이벤트의 예측 스냅샷을 건드리지 않는다 — 이후 재계산되는 미래
+  이벤트에만 반영(튜닝 로그의 전향 원칙).
+
 ### API-15 배치 이력
 
 ```
@@ -449,6 +463,10 @@ GET /api/admin/korea-shows
 | 14b | GET | `/api/admin/rag/documents` | Basic | 문서 목록 | SC-04 |
 | 14b | DELETE | `/api/admin/rag/documents/{id}` | Basic | 문서 삭제(+캐시 무효화) | SC-04 |
 | 14b | DELETE | `/api/admin/rag/cache/{artistMbid}` | Basic | 설명 캐시 무효화 | SC-04 |
+| 14c | GET | `/api/admin/festival-mappings` | Basic | 매핑 키워드 목록 | SC-04 |
+| 14c | POST | `/api/admin/festival-mappings` | Basic | 201 / 400 / 409 | SC-04 |
+| 14c | DELETE | `/api/admin/festival-mappings/{id}` | Basic | 204 / 404 | SC-04 |
+| 14c | POST | `/api/admin/festival-mappings/reclassify` | Basic | 전체 공연 재판정 | SC-04 |
 | 15 | GET | `/api/admin/logs` | Basic | 이력 + 진행 상태 | SC-04 |
 | 16 | GET | `/api/admin/korea-shows` | Basic | KR 공연 후보 | SC-04 |
 
