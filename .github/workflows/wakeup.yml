@@ -1,0 +1,16 @@
+name: morning-wakeup
+on:
+  schedule:
+    - cron: '50 22 * * *'   # UTC 22:50 = KST 07:50 (Actions 스케줄은 5~15분 지연될 수 있음)
+  workflow_dispatch:
+jobs:
+  wake:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Render 인스턴스 깨우기
+        run: |
+          for i in 1 2 3; do
+            curl -sf --max-time 300 https://soundcheck-api-0d7l.onrender.com/health && exit 0
+            sleep 10
+          done
+          exit 1
